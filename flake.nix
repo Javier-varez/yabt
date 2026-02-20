@@ -1,0 +1,44 @@
+{
+  description = "luatest";
+
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+  };
+
+  outputs =
+    {
+      nixpkgs,
+      ...
+    }:
+    let
+      systems = [
+        "aarch64-darwin"
+        "aarch64-linux"
+        "x86_64-linux"
+      ];
+
+      forEachSystem = fn: nixpkgs.lib.genAttrs systems (system: fn system);
+
+    in
+    {
+      devShells = forEachSystem (
+        system:
+        let
+          pkgs = import nixpkgs {
+            inherit system;
+          };
+        in
+        rec {
+          vds = pkgs.mkShell {
+            nativeBuildInputs = with pkgs; [
+              gcc
+              luajit
+              pkg-config
+            ];
+          };
+
+          default = vds;
+        }
+      );
+    };
+}
