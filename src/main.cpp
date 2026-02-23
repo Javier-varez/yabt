@@ -1,59 +1,51 @@
-#include <stdio.h>
+#include <cstdio>
+#include <string>
 
-#include "lua_engine.h"
+#include "yabt/cli/cli_parser.h"
+#include "yabt/cmd/build.h"
+#include "yabt/runtime/check_result.h"
 
-extern "C" {
-#include "lauxlib.h"
-#include "lualib.h"
+namespace {
+
+bool verbose{false};
+
+void register_global_options(yabt::cli::CliParser &cli_parser) {
+  yabt::runtime::check(
+      cli_parser.register_flag({
+          .name{"verbose"},
+          .short_name{'v'},
+          .optional = true,
+          .type = yabt::cli::FlagType::BOOL,
+          .description{"Prints additional information for debugging purposes"},
+          .handler{[](const auto &) {
+            verbose = true;
+            return yabt::runtime::Result<void, std::string>::ok();
+          }},
+      }),
+      "Error registering flag {}");
 }
 
-typedef struct Rule {
-  const char *name;
-  const char *statement;
-  const char *description;
-} Rule;
+yabt::cmd::BuildCommand build_cmd;
 
-typedef struct InPath {
-  const char *path;
-} InPath;
+void register_subcommands(yabt::cli::CliParser &cli_parser) {
+  yabt::runtime::check(build_cmd.register_command(cli_parser),
+                       "Unable to register build command: {}");
+}
 
-typedef struct OutPath {
-  const char *path;
-} OutPath;
+} // namespace
 
-typedef struct Flag {
-  const char *name;
-  const char *value;
-} Flag;
+int main(int argc, const char *argv[]) noexcept {
+  yabt::cli::CliParser cli_parser;
 
-typedef struct Build {
-  const char *rule_name;
-  const OutPath *out_paths;
-  const InPath *in_paths;
-  const Flag *flags;
-} Build;
+  register_global_options(cli_parser);
+  register_subcommands(cli_parser);
 
-// int add_rule(lua_State *const L) { return 0; }
-
-int main() {
-  lua_State *L = init_lua_state();
-  if (L == nullptr) {
-    printf("failed to create lua state\n");
+  yabt::runtime::Result cli_result = cli_parser.parse(argc, argv);
+  if (!cli_result.is_ok()) {
+    printf(
+        "Well, cli parsing failed... probably should print help and exit: %s\n",
+        cli_result.error_value().c_str());
   }
-
-  const int result = luaL_dofile(L, "script.lua");
-  if (result != 0) {
-    printf("failed to run file\n");
-  }
-
-  lua_getglobal(L, "print");
-  lua_pushstring(L, "miller");
-  lua_pushstring(L, "north");
-  lua_pushinteger(L, 42);
-
-  lua_call(L, 3, 0);
-
-  uninit_lua_state(L);
 
   return 0;
 }

@@ -32,8 +32,10 @@
           vds = pkgs.mkShell {
             nativeBuildInputs = with pkgs; [
               gcc
-              luajit
+              (luajit.withPackages (ps: with ps; [ busted ]))
               pkg-config
+              bear
+              gdb
             ];
           };
 
