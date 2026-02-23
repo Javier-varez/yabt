@@ -130,25 +130,68 @@ public:
     return {detail::ErrSentinel{callable(error_value())}};
   }
 
-  ~Result() noexcept {
+  ~Result() noexcept { release(); }
+
+  Result(const Result &other) noexcept {
+    m_is_ok = other.m_is_ok;
     if (m_is_ok) {
-      auto *ok = reinterpret_cast<Ok *>(&m_memory_buffer);
-      if constexpr (!std::is_same_v<void, Ok>) {
-        ok->~Ok();
+      if constexpr (!std::same_as<Ok, void>) {
+        new (&m_memory_buffer) Ok{other.ok_value()};
       }
     } else {
-      auto *err = reinterpret_cast<Err *>(&m_memory_buffer);
-      if constexpr (!std::is_same_v<void, Err>) {
-        err->~Err();
+      if constexpr (!std::same_as<Err, void>) {
+        new (&m_memory_buffer) Err{other.error_value()};
       }
     }
   }
 
-  Result(const Result &) noexcept = default;
-  Result(Result &&) noexcept = default;
+  Result(Result &&other) noexcept {
+    m_is_ok = other.m_is_ok;
+    if (m_is_ok) {
+      if constexpr (!std::same_as<Ok, void>) {
+        new (&m_memory_buffer) Ok{std::move(other.ok_value())};
+      }
+    } else {
+      if constexpr (!std::same_as<Err, void>)
+        new (&m_memory_buffer) Err{std::move(other.error_value())};
+    }
+  }
 
-  Result &operator=(const Result &) noexcept = default;
-  Result &operator=(Result &&) noexcept = default;
+  Result &operator=(const Result &other) noexcept {
+    if (&other == this)
+      return *this;
+
+    release();
+
+    m_is_ok = other.m_is_ok;
+
+    if (m_is_ok) {
+      if constexpr (!std::same_as<Ok, void>)
+        new (&m_memory_buffer) Ok{other.ok_value()};
+    } else {
+      if constexpr (!std::same_as<Err, void>)
+        new (&m_memory_buffer) Err{other.error_value()};
+    }
+    return *this;
+  }
+
+  Result &operator=(Result &&other) noexcept {
+    if (&other == this)
+      return *this;
+
+    release();
+
+    m_is_ok = other.m_is_ok;
+    if (m_is_ok) {
+      if constexpr (!std::same_as<Ok, void>)
+        new (&m_memory_buffer) Ok{std::move(other.ok_value())};
+    } else {
+      if constexpr (!std::same_as<Err, void>)
+        new (&m_memory_buffer) Err{std::move(other.error_value())};
+    }
+
+    return *this;
+  }
 
 private:
   using InstantiableOk = typename detail::Instantiable<Ok>::type;
@@ -161,6 +204,20 @@ private:
   typename std::aligned_storage<BUFFER_SIZE, ALIGNMENT>::type m_memory_buffer;
 
   Result() noexcept = default;
+
+  void release() {
+    if (m_is_ok) {
+      if constexpr (!std::is_same_v<void, Ok>) {
+        auto *ok = std::launder(reinterpret_cast<Ok *>(&m_memory_buffer));
+        ok->~Ok();
+      }
+    } else {
+      if constexpr (!std::is_same_v<void, Err>) {
+        auto *err = std::launder(reinterpret_cast<Err *>(&m_memory_buffer));
+        err->~Err();
+      }
+    }
+  }
 };
 
 #define RESULT_VERIFY(expr)                                                    \
