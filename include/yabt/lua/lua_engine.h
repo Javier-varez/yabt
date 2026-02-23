@@ -1,11 +1,16 @@
 #pragma once
 
+#include <map>
+#include <span>
+#include <string>
+#include <vector>
+
 #include "yabt/ninja/build_rule.h"
 #include "yabt/ninja/build_step.h"
 #include "yabt/runtime/result.h"
 
 extern "C" {
-typedef struct lua_State lua_State;
+struct lua_State;
 }
 
 namespace yabt::lua {
@@ -32,9 +37,24 @@ public:
   build_rules() const noexcept;
 
 private:
+  friend int l_add_build_step(lua_State *const L);
+  friend int l_add_build_step_with_rule(lua_State *const L);
+
   LuaEngine() noexcept = default;
 
+  void add_build_step() noexcept;
+  [[nodiscard]] runtime::Result<void, std::string>
+  add_build_step_impl() noexcept;
+
+  void add_build_step_with_rule() noexcept;
+  [[nodiscard]] runtime::Result<void, std::string>
+  add_build_step_with_rule_impl() noexcept;
+
   lua_State *m_state;
+
+  std::vector<ninja::BuildStep> m_build_steps;
+  std::vector<ninja::BuildStepWithRule> m_build_steps_with_rule;
+  std::map<std::string, ninja::BuildRule> m_build_rules;
 };
 
 } // namespace yabt::lua
