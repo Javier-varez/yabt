@@ -16,6 +16,8 @@ CFLAGS := -Wall -Wextra -Werror $(LUAJIT_INCS) -O2 -gdwarf-3 $(INCLUDE_DIRS:%=-I
 CXXFLAGS := $(CFLAGS) -std=c++20
 LDFLAGS := $(LUAJIT_LIBS)
 
+CXX ?= g++
+
 OBJECTS := $(SRCS:%.cpp=$(BUILD_DIR)/%.o)
 DEPFILES := $(OBJECTS:%=%.d)
 
@@ -28,10 +30,10 @@ clean:
 
 $(BUILD_DIR)/%.o: %.cpp
 	@mkdir -p $(dir $@)
-	g++ -c -o $@ $(CXXFLAGS) -MD -MF $@.d $<
+	$(CXX) -c -o $@ $(CXXFLAGS) -MD -MF $@.d $<
 
 $(BUILD_DIR)/$(TARGET_NAME): $(OBJECTS)
 	@mkdir -p $(dir $@)
-	g++ -o $@ $(CXXFLAGS) $^ $(LDFLAGS)
+	$(CXX) -o $@ $(CXXFLAGS) $^ $(LDFLAGS)
 
 -include $(DEPFILES)
