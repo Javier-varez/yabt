@@ -17,6 +17,7 @@ CXXFLAGS := $(CFLAGS) -std=c++20
 LDFLAGS := $(LUAJIT_LIBS)
 
 OBJECTS := $(SRCS:%.cpp=$(BUILD_DIR)/%.o)
+DEPFILES := $(OBJECTS:%=%.d)
 
 all: $(BUILD_DIR)/$(TARGET_NAME)
 .PHONY: all
@@ -27,8 +28,10 @@ clean:
 
 $(BUILD_DIR)/%.o: %.cpp
 	@mkdir -p $(dir $@)
-	g++ -c -o $@ $(CXXFLAGS) $^
+	g++ -c -o $@ $(CXXFLAGS) -MD -MF $@.d $<
 
 $(BUILD_DIR)/$(TARGET_NAME): $(OBJECTS)
 	@mkdir -p $(dir $@)
 	g++ -o $@ $(CXXFLAGS) $^ $(LDFLAGS)
+
+-include $(DEPFILES)
