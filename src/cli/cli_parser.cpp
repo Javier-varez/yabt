@@ -202,8 +202,6 @@ CliParser::register_flag(Flag config) noexcept {
 
 [[nodiscard]] runtime::Result<void, std::string>
 CliParser::parse(const size_t argc, const char *argv[]) const noexcept {
-  std::vector<std::pair<Flag, Arg>> global_args{};
-
   // Parse global flags
   size_t arg_idx = 1;
   for (; arg_idx < argc; arg_idx++) {
@@ -213,7 +211,10 @@ CliParser::parse(const size_t argc, const char *argv[]) const noexcept {
       sv = sv.substr(2);
       const std::pair<Flag, Arg> arg =
           RESULT_PROPAGATE(parse_long_flag(std::span{m_global_flags}, sv));
-      global_args.push_back(arg);
+
+      if (arg.first.handler) {
+        RESULT_PROPAGATE_DISCARD(arg.first.handler(arg.second));
+      }
       continue;
     }
 
@@ -223,7 +224,9 @@ CliParser::parse(const size_t argc, const char *argv[]) const noexcept {
       std::vector<std::pair<Flag, Arg>> args =
           RESULT_PROPAGATE(parse_short_flags(std::span{m_global_flags}, sv));
       for (std::pair<Flag, Arg> &arg : args) {
-        global_args.push_back(std::move(arg));
+        if (arg.first.handler) {
+          RESULT_PROPAGATE_DISCARD(arg.first.handler(arg.second));
+        }
       }
       continue;
     }
@@ -254,7 +257,6 @@ CliParser::parse(const size_t argc, const char *argv[]) const noexcept {
   const std::span<const Flag> subcommand_flags = subcommand.flags();
 
   // Parse subcommand flags
-  std::vector<std::pair<Flag, Arg>> subcommand_args{};
   for (; arg_idx < argc; arg_idx++) {
     std::string_view sv{argv[arg_idx]};
 
@@ -263,7 +265,9 @@ CliParser::parse(const size_t argc, const char *argv[]) const noexcept {
       sv = sv.substr(2);
       const std::pair<Flag, Arg> arg =
           RESULT_PROPAGATE(parse_long_flag(std::span{subcommand_flags}, sv));
-      subcommand_args.push_back(arg);
+      if (arg.first.handler) {
+        RESULT_PROPAGATE_DISCARD(arg.first.handler(arg.second));
+      }
       continue;
     }
 
@@ -272,7 +276,9 @@ CliParser::parse(const size_t argc, const char *argv[]) const noexcept {
       std::vector<std::pair<Flag, Arg>> args = RESULT_PROPAGATE(
           parse_short_flags(std::span{subcommand_flags}, sv.substr(1)));
       for (std::pair<Flag, Arg> &arg : args) {
-        subcommand_args.push_back(std::move(arg));
+        if (arg.first.handler) {
+          RESULT_PROPAGATE_DISCARD(arg.first.handler(arg.second));
+        }
       }
       continue;
     }
@@ -286,17 +292,6 @@ CliParser::parse(const size_t argc, const char *argv[]) const noexcept {
   std::vector<std::string_view> unparsed_args;
   for (; arg_idx < argc; arg_idx++) {
     unparsed_args.push_back(std::string_view{argv[arg_idx]});
-  }
-
-  for (const auto &[flag, arg] : global_args) {
-    if (flag.handler) {
-      RESULT_PROPAGATE_DISCARD(flag.handler(arg));
-    }
-  }
-  for (const auto &[flag, arg] : subcommand_args) {
-    if (flag.handler) {
-      RESULT_PROPAGATE_DISCARD(flag.handler(arg));
-    }
   }
 
   return subcommand.invoke(unparsed_args);
