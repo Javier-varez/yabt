@@ -6,12 +6,13 @@ LUAJIT_INCS := $(shell pkg-config --cflags luajit)
 
 INCLUDE_DIRS := include
 
-SRCS := src/main.cpp        \
-	src/lua/lua_engine.cpp  \
-	src/log/log.cpp  \
-	src/cmd/build.cpp       \
-	src/cmd/help.cpp        \
-	src/cli/cli_parser.cpp  \
+SRCS := src/main.cpp            \
+	src/lua/lua_engine.cpp      \
+	src/log/log.cpp             \
+	src/cmd/build.cpp           \
+	src/cmd/help.cpp            \
+	src/cmd/sync.cpp            \
+	src/cli/cli_parser.cpp      \
 	src/cli/flag.cpp            \
 	src/process/process.cpp
 
