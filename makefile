@@ -9,6 +9,7 @@ INCLUDE_DIRS := include
 SRCS := src/main.cpp        \
 	src/lua/lua_engine.cpp  \
 	src/cmd/build.cpp       \
+	src/cmd/help.cpp        \
 	src/cli/cli_parser.cpp  \
 	src/cli/flag.cpp
 

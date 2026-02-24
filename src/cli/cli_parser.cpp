@@ -120,11 +120,54 @@ parse_short_flags(const std::span<const Flag> &flags, std::string_view sv) {
   return Result::ok(args);
 }
 
+void print_flags(const std::span<const Flag> flags, const char *title) {
+  if (flags.size() > 0) {
+    printf("%s:\n", title);
+  }
+
+  const auto optional_str = [](const Flag &flag) {
+    if (flag.optional || flag.type == FlagType::BOOL) {
+      return "(Optional) ";
+    }
+    return "";
+  };
+
+  const auto required_arg_str = [](const Flag &flag) {
+    switch (flag.type) {
+    case yabt::cli::FlagType::BOOL: {
+      return std::format("--{}", flag.name);
+    }
+    case yabt::cli::FlagType::STRING: {
+      return std::format("--{} <string>", flag.name);
+    }
+    case yabt::cli::FlagType::INTEGER: {
+      return std::format("--{} <int>", flag.name);
+    }
+    }
+    return std::string{""};
+  };
+
+  for (const Flag &flag : flags) {
+    if (flag.short_name.has_value()) {
+      printf("  -%c, %-20s%s%s\n", flag.short_name.value(),
+             required_arg_str(flag).c_str(), optional_str(flag),
+             flag.description.c_str());
+    } else {
+      printf("      %-20s%s%s\n", required_arg_str(flag).c_str(),
+             optional_str(flag), flag.description.c_str());
+    }
+  }
+}
+
 } // namespace
+
+CliParser::CliParser(const char *argv0) noexcept : m_command_name{argv0} {}
 
 [[nodiscard]] Subcommand &
 CliParser::register_subcommand(std::string_view name,
-                               SubcommandHandler &handler) noexcept {
+                               SubcommandHandler &handler,
+                               std::string_view short_description,
+                               std::string_view long_description) noexcept {
   const auto iter =
       std::find_if(m_subcommands.begin(), m_subcommands.end(),
                    [&name](const Subcommand &subcommand) noexcept -> bool {
@@ -135,7 +178,8 @@ CliParser::register_subcommand(std::string_view name,
     return *iter;
   }
 
-  m_subcommands.push_back(Subcommand{name, handler});
+  m_subcommands.push_back(
+      Subcommand{name, handler, short_description, long_description});
   return m_subcommands.back();
 }
 
@@ -157,7 +201,7 @@ CliParser::register_flag(Flag config) noexcept {
 }
 
 [[nodiscard]] runtime::Result<void, std::string>
-CliParser::parse(const size_t argc, const char *argv[]) const {
+CliParser::parse(const size_t argc, const char *argv[]) const noexcept {
   std::vector<std::pair<Flag, Arg>> global_args{};
 
   // Parse global flags
@@ -257,6 +301,54 @@ CliParser::parse(const size_t argc, const char *argv[]) const {
 
   return subcommand.invoke(unparsed_args);
   return runtime::Result<void, std::string>::ok();
+}
+
+void CliParser::set_description(std::string_view descr) noexcept {
+  m_descr = descr;
+}
+
+void CliParser::print_help() const noexcept {
+  printf("%s\n\n", m_descr.c_str());
+  printf("Usage:\n"
+         "  %s [global options] <Subcommand> [subcommand options]\n\n",
+         m_command_name.c_str());
+
+  print_flags(m_global_flags, "Flags");
+  printf("\n");
+
+  if (m_subcommands.size() > 0) {
+    printf("Available Commands:\n");
+  }
+  for (const Subcommand &cmd : m_subcommands) {
+    printf("  %-20s%s\n", cmd.name().c_str(), cmd.short_description().c_str());
+  }
+}
+
+void CliParser::print_subcommand_help(
+    std::string_view subcommand) const noexcept {
+  const auto iter =
+      std::find_if(m_subcommands.cbegin(), m_subcommands.cend(),
+                   [subcommand](const Subcommand &cmd) noexcept -> bool {
+                     return cmd.name() == subcommand;
+                   });
+  if (iter == m_subcommands.cend()) {
+    printf("Unknown command %s.\n\n", std::string(subcommand).c_str());
+    print_help();
+    return;
+  }
+
+  const Subcommand &cmd = *iter;
+
+  printf("%s\n\n", cmd.long_description().c_str());
+  printf("Usage:\n"
+         "  %s [global options] %s [subcommand options]\n\n",
+         m_command_name.c_str(), cmd.name().c_str());
+
+  print_flags(m_global_flags, "Global Flags");
+  printf("\n");
+
+  print_flags(cmd.flags(), "Subcommand Flags");
+  printf("\n");
 }
 
 } // namespace yabt::cli

@@ -20,9 +20,11 @@ public:
 
 class Subcommand {
 public:
-  inline Subcommand(const std::string_view name,
-                    SubcommandHandler &handler) noexcept
-      : m_name{name}, m_handler{&handler} {}
+  inline Subcommand(const std::string_view name, SubcommandHandler &handler,
+                    std::string_view short_descr,
+                    std::string_view long_descr) noexcept
+      : m_name{name}, m_short_descr{short_descr}, m_long_descr{long_descr},
+        m_handler{&handler} {}
 
   [[nodiscard]] inline runtime::Result<void, std::string>
   register_flag(Flag flag) noexcept {
@@ -43,7 +45,9 @@ public:
     m_handler = &handler;
   }
 
-  [[nodiscard]] inline std::string_view name() const noexcept { return m_name; }
+  [[nodiscard]] inline const std::string &name() const noexcept {
+    return m_name;
+  }
 
   [[nodiscard]] inline std::span<const Flag> flags() const noexcept {
     return m_flags;
@@ -54,8 +58,21 @@ public:
     return m_handler->handle_subcommand(unparsed_args);
   }
 
+  [[nodiscard]] inline const std::string &short_description() const noexcept {
+    return m_short_descr;
+  }
+
+  [[nodiscard]] inline const std::string &long_description() const noexcept {
+    if (m_long_descr == "") {
+      return m_short_descr;
+    }
+    return m_long_descr;
+  }
+
 private:
   std::string m_name;
+  std::string m_short_descr;
+  std::string m_long_descr;
   SubcommandHandler *m_handler;
   std::vector<Flag> m_flags;
 };

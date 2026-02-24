@@ -9,10 +9,17 @@
 
 namespace yabt::cmd {
 
+namespace {
+const std::string_view SHORT_DESCRIPTION = "Builds the requested targets";
+const std::string_view LONG_DESCRIPTION =
+    "Builds requested targets using the specified target spec. A target spec\n"
+    "is ... (TBD)";
+} // namespace
+
 [[nodiscard]] runtime::Result<void, std::string>
 BuildCommand::register_command(cli::CliParser &cli_parser) noexcept {
-  yabt::cli::Subcommand &subcommand =
-      cli_parser.register_subcommand("build", *this);
+  yabt::cli::Subcommand &subcommand = cli_parser.register_subcommand(
+      "build", *this, SHORT_DESCRIPTION, LONG_DESCRIPTION);
 
   return subcommand.register_flag({
       .name{"threads"},
