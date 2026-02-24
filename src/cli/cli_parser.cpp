@@ -149,11 +149,11 @@ void print_flags(const std::span<const Flag> flags, const char *title) {
 
   for (const Flag &flag : flags) {
     if (flag.short_name.has_value()) {
-      printf("  -%c, %-20s%s%s\n", flag.short_name.value(),
+      printf("  -%c, %-30s%s%s\n", flag.short_name.value(),
              required_arg_str(flag).c_str(), optional_str(flag),
              flag.description.c_str());
     } else {
-      printf("      %-20s%s%s\n", required_arg_str(flag).c_str(),
+      printf("      %-30s%s%s\n", required_arg_str(flag).c_str(),
              optional_str(flag), flag.description.c_str());
     }
   }

@@ -1,4 +1,5 @@
 #include "yabt/cmd/help.h"
+#include "yabt/log/log.h"
 
 namespace yabt::cmd {
 
@@ -22,8 +23,10 @@ HelpCommand::register_command(cli::CliParser &cli_parser) noexcept {
     std::span<const std::string_view> unparsed_args) noexcept {
 
   if (unparsed_args.size() == 0) {
+    yabt_debug("Printing global help information");
     m_parser->print_help();
   } else {
+    yabt_debug("Printing help information for {}", unparsed_args[0]);
     m_parser->print_subcommand_help(unparsed_args[0]);
   }
   return runtime::Result<void, std::string>::ok();

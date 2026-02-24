@@ -4,11 +4,10 @@
 #include "yabt/cli/cli_parser.h"
 #include "yabt/cmd/build.h"
 #include "yabt/cmd/help.h"
+#include "yabt/log/log.h"
 #include "yabt/runtime/check_result.h"
 
 namespace {
-
-bool verbose{false};
 
 void register_global_options(yabt::cli::CliParser &cli_parser) {
   yabt::runtime::check(
@@ -17,9 +16,39 @@ void register_global_options(yabt::cli::CliParser &cli_parser) {
           .short_name{'v'},
           .optional = true,
           .type = yabt::cli::FlagType::BOOL,
-          .description{"Prints additional information for debugging purposes"},
-          .handler{[](const auto &) {
-            verbose = true;
+          .description{"Prints additional information for debugging purposes."},
+          .handler{[](const yabt::cli::Arg &) {
+            yabt::log::set_log_level(yabt::log::LogLevel::VERBOSE);
+            return yabt::runtime::Result<void, std::string>::ok();
+          }},
+      }),
+      "Error registering flag {}");
+
+  yabt::runtime::check(
+      cli_parser.register_flag({
+          .name{"log-level"},
+          .short_name{},
+          .optional = true,
+          .type = yabt::cli::FlagType::STRING,
+          .description{"Sets the log level to one of: \"ERROR\", \"WARNING\", "
+                       "\"INFO\", \"DEBUG\", \"VERBOSE\"."},
+          .handler{[](const yabt::cli::Arg &level) {
+            yabt::cli::StringArg level_arg =
+                std::get<yabt::cli::StringArg>(level);
+            return yabt::log::set_log_level(level_arg.value);
+          }},
+      }),
+      "Error registering flag {}");
+
+  yabt::runtime::check(
+      cli_parser.register_flag({
+          .name{"no-color"},
+          .short_name{},
+          .optional = true,
+          .type = yabt::cli::FlagType::BOOL,
+          .description{"Disables coloring of the output provided by yabt."},
+          .handler{[](const yabt::cli::Arg &) {
+            yabt::log::disable_color();
             return yabt::runtime::Result<void, std::string>::ok();
           }},
       }),
@@ -51,7 +80,7 @@ int main(int argc, const char *argv[]) noexcept {
 
   yabt::runtime::Result cli_result = cli_parser.parse(argc, argv);
   if (!cli_result.is_ok()) {
-    printf("Error: %s\n\n", cli_result.error_value().c_str());
+    yabt_error("{}\n", cli_result.error_value());
     cli_parser.print_help();
     return EXIT_FAILURE;
   }
