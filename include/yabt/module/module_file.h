@@ -15,7 +15,7 @@ enum class ModuleType {
 struct DependencyDefinition final {
   std::string url;
   std::string version;
-  std::string sha256;
+  std::string hash;
   std::string type;
 };
 

@@ -8,7 +8,7 @@ LUA_STRUCT_PARSE_SPEC_DEF(                //
     ::yabt::module::DependencyDefinition, //
     (std::string, url),                   //
     (std::string, version),               //
-    (std::string, sha256),                //
+    (std::string, hash),                  //
     (std::string, type)                   //
 );
 

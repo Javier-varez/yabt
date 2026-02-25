@@ -5,12 +5,9 @@
 #include "yabt/cmd/sync.h"
 #include "yabt/log/log.h"
 #include "yabt/module/module_file.h"
-#include "yabt/process/process.h"
 #include "yabt/runtime/result.h"
 
 namespace yabt::cmd {
-
-using std::string_view_literals::operator""sv;
 
 namespace {
 const std::string_view SHORT_DESCRIPTION =
@@ -40,10 +37,11 @@ SyncCommand::register_command(cli::CliParser &cli_parser) noexcept {
   yabt_info("Module name: {}", modfile.name);
   yabt_info("Module version: {}", modfile.version);
   yabt_info("Module deps:");
-  for (const module::DependencyDefinition &dep : modfile.deps) {
+  for (const auto &[dep_name, dep] : modfile.deps) {
+    yabt_info("\tdep name: {}", dep_name);
     yabt_info("\tdep url: {}", dep.url);
     yabt_info("\tdep version: {}", dep.version);
-    yabt_info("\tdep sha256: {}", dep.sha256);
+    yabt_info("\tdep hash: {}", dep.hash);
     yabt_info("\tdep type: {}", dep.type);
   }
   yabt_info("Module flags:");
