@@ -8,6 +8,25 @@
 
 namespace yabt::process {
 
+runtime::Result<void, std::string>
+Process::ProcessOutput::to_result() const noexcept {
+  return std::visit(
+      []<typename T>(const T v) {
+        if constexpr (std::same_as<T, NormalExit>) {
+          if (v.exit_code == 0) {
+            return runtime::Result<void, std::string>::ok();
+          }
+          return runtime::Result<void, std::string>::error(
+              std::format("Exited with code {}", v.exit_code));
+        } else if constexpr (std::same_as<T, UnhandledSignal>) {
+          return runtime::Result<void, std::string>::error(
+              std::format("Exited with signal {}", v.signal));
+        }
+        runtime::fatal("Unhandled type");
+      },
+      exit_reason);
+}
+
 Process::Process(std::string_view executable,
                  std::span<const std::string> arguments) noexcept
     : m_exe{executable}, m_args{[arguments]() {

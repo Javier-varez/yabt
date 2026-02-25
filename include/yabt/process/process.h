@@ -44,6 +44,8 @@ public:
     std::string stdout;
     std::string stderr;
     ExitReason exit_reason;
+
+    [[nodiscard]] runtime::Result<void, std::string> to_result() const noexcept;
   };
 
   template <typename... Args>
