@@ -28,40 +28,64 @@ set_log_level(std::string_view sv) noexcept;
 
 void disable_color() noexcept;
 
+class IndentGuard {
+public:
+  IndentGuard();
+  ~IndentGuard();
+
+  IndentGuard(const IndentGuard &) = delete;
+  IndentGuard(IndentGuard &&) = delete;
+  IndentGuard &operator=(const IndentGuard &) = delete;
+  IndentGuard &operator=(IndentGuard &&) = delete;
+
+private:
+};
+
+[[nodiscard]] size_t current_indent_level();
+
 template <typename... Args>
-void log(std::format_string<const std::string_view &, const std::string_view &,
-                            Args...>
+void log(const std::format_string<
+             const std::string_view &, const std::string_view &,
+             const std::string_view &, std::string_view, size_t, Args...>
              fstr,
-         LogLevel level, Color color, Args &&...args) noexcept {
+         const LogLevel level, const std::string_view level_str,
+         const Color color, Args &&...args) noexcept {
   if (is_level_enabled(level)) {
+    using std::string_view_literals::operator""sv;
     const std::string_view set_color = get_set_color_code(color);
     const std::string_view reset_color = get_reset_color_code();
-    puts(std::format(fstr, set_color, reset_color, std::forward<Args>(args)...)
+
+    constexpr static size_t INDENT_SPACES = 2;
+    const size_t indent_level = current_indent_level();
+
+    puts(std::format(fstr, set_color, level_str, reset_color, ""sv,
+                     indent_level * INDENT_SPACES, std::forward<Args>(args)...)
              .c_str());
   }
 }
 
-#define _yabt_log(level_str, color, level, fstring, ...)                       \
-  ::yabt::log::log("{}" level_str "{}" fstring, level, color, ##__VA_ARGS__)
+#define _yabt_log(color, level, level_str, fstring, ...)                       \
+  ::yabt::log::log("{}{:<10}{}{:{}}" fstring, level, level_str, color,         \
+                   ##__VA_ARGS__)
 
 #define yabt_error(fstring, ...)                                               \
-  _yabt_log("Error: ", ::yabt::log::Color::RED, ::yabt::log::LogLevel::ERROR,  \
-            fstring, ##__VA_ARGS__)
+  _yabt_log(::yabt::log::Color::RED, ::yabt::log::LogLevel::ERROR,             \
+            "Error: ", fstring, ##__VA_ARGS__)
 
 #define yabt_warn(fstring, ...)                                                \
-  _yabt_log("Warning: ", ::yabt::log::Color::MAGENTA,                          \
-            ::yabt::log::LogLevel::WARNING, fstring, ##__VA_ARGS__)
+  _yabt_log(::yabt::log::Color::MAGENTA, ::yabt::log::LogLevel::WARNING,       \
+            "Warning: ", fstring, ##__VA_ARGS__)
 
 #define yabt_info(fstring, ...)                                                \
-  _yabt_log("Info: ", ::yabt::log::Color::YELLOW, ::yabt::log::LogLevel::INFO, \
-            fstring, ##__VA_ARGS__)
+  _yabt_log(::yabt::log::Color::YELLOW, ::yabt::log::LogLevel::INFO,           \
+            "Info: ", fstring, ##__VA_ARGS__)
 
 #define yabt_debug(fstring, ...)                                               \
-  _yabt_log("Debug: ", ::yabt::log::Color::GREEN,                              \
-            ::yabt::log::LogLevel::DEBUG, fstring, ##__VA_ARGS__)
+  _yabt_log(::yabt::log::Color::GREEN, ::yabt::log::LogLevel::DEBUG,           \
+            "Debug: ", fstring, ##__VA_ARGS__)
 
 #define yabt_verbose(fstring, ...)                                             \
-  _yabt_log("Verbose: ", ::yabt::log::Color::BLUE,                             \
-            ::yabt::log::LogLevel::VERBOSE, fstring, ##__VA_ARGS__)
+  _yabt_log(::yabt::log::Color::BLUE, ::yabt::log::LogLevel::VERBOSE,          \
+            "Verbose: ", fstring, ##__VA_ARGS__)
 
 } // namespace yabt::log

@@ -7,6 +7,7 @@ namespace yabt::log {
 namespace {
 LogLevel global_level = LogLevel::INFO;
 bool enable_color = true;
+size_t indent_level = 0;
 } // namespace
 
 void set_log_level(const LogLevel level) noexcept { global_level = level; }
@@ -85,5 +86,10 @@ using std::string_view_literals::operator""sv;
 }
 
 void disable_color() noexcept { enable_color = false; }
+
+[[nodiscard]] size_t current_indent_level() { return indent_level; }
+
+IndentGuard::IndentGuard() { indent_level++; }
+IndentGuard::~IndentGuard() { indent_level--; };
 
 } // namespace yabt::log

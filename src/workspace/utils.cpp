@@ -55,9 +55,12 @@ sync_workspace(const SyncMode sync_mode) noexcept {
   auto root_module = RESULT_PROPAGATE(module::open_module(ws_root.value()));
   std::vector<std::unique_ptr<module::Module>> all_modules{};
   all_modules.push_back(std::move(root_module));
+  yabt_verbose("Found workspace root at {}", ws_root.value().native());
 
   std::deque<std::filesystem::path> queue{ws_root.value()};
   while (queue.size() != 0) {
+    log::IndentGuard _indent_guard{};
+
     const std::filesystem::path current_module_dir = queue.front();
     queue.pop_front();
 
@@ -69,7 +72,12 @@ sync_workspace(const SyncMode sync_mode) noexcept {
         RESULT_PROPAGATE(module::ModuleFile::load_module_file(modfile_path));
 
     yabt_debug("Processing dependencies of {}", modfile_path.c_str());
+    log::IndentGuard _indent_guard2{};
+
     for (const auto &[dep_name, dep] : modfile.deps) {
+      yabt_debug("Processing {}", dep_name);
+      log::IndentGuard _indent_guard{};
+
       const std::filesystem::path dep_dir = deps_dir / dep_name;
       auto module = RESULT_PROPAGATE(
           module::open_or_fetch_module(dep_dir, dep.url, dep.type, dep.hash));
@@ -122,6 +130,7 @@ sync_workspace(const SyncMode sync_mode) noexcept {
       pinned_modules.insert(
           std::pair{dep_name, PinnedMod{.hash{target_revision}}});
       yabt_debug("Pinning dependency {} to {}", dep_name, target_revision);
+      yabt_debug("");
 
       all_modules.push_back(std::move(module));
       queue.push_back(dep_dir);

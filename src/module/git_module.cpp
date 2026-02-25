@@ -44,7 +44,7 @@ GitModule::open_or_fetch_module(const std::filesystem::path &mod_dir,
   if (const std::filesystem::path git_dir = mod_dir / ".git";
       std::filesystem::exists(git_dir)) {
     // Return existing module
-    yabt_debug("opening already-existing git module at {}", mod_dir.native());
+    yabt_debug("Opening already-existing git module at {}", mod_dir.native());
     return GitModule::open(mod_dir);
   }
 
