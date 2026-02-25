@@ -2,7 +2,6 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#include "yabt/log/log.h"
 #include "yabt/process/process.h"
 #include "yabt/runtime/check.h"
 
@@ -11,16 +10,16 @@ namespace yabt::process {
 runtime::Result<void, std::string>
 Process::ProcessOutput::to_result() const noexcept {
   return std::visit(
-      []<typename T>(const T v) {
+      [this]<typename T>(const T v) {
         if constexpr (std::same_as<T, NormalExit>) {
           if (v.exit_code == 0) {
             return runtime::Result<void, std::string>::ok();
           }
-          return runtime::Result<void, std::string>::error(
-              std::format("Exited with code {}", v.exit_code));
+          return runtime::Result<void, std::string>::error(std::format(
+              "Exited with code {}\nstderr: {}", v.exit_code, stderr));
         } else if constexpr (std::same_as<T, UnhandledSignal>) {
-          return runtime::Result<void, std::string>::error(
-              std::format("Exited with signal {}", v.signal));
+          return runtime::Result<void, std::string>::error(std::format(
+              "Exited with signal {}\nstderr: {}", v.signal, stderr));
         }
         runtime::fatal("Unhandled type");
       },

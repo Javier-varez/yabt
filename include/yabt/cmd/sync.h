@@ -2,6 +2,7 @@
 
 #include "yabt/cli/cli_parser.h"
 #include "yabt/cli/subcommand.h"
+#include "yabt/workspace/utils.h"
 
 namespace yabt::cmd {
 
@@ -16,6 +17,7 @@ public:
       std::span<const std::string_view> unparsed_args) noexcept final;
 
 private:
+  workspace::SyncMode m_sync_mode{workspace::SyncMode::NORMAL};
 };
 
 } // namespace yabt::cmd

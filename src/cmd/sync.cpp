@@ -4,8 +4,8 @@
 
 #include "yabt/cmd/sync.h"
 #include "yabt/log/log.h"
-#include "yabt/module/module_file.h"
 #include "yabt/runtime/result.h"
+#include "yabt/workspace/utils.h"
 
 namespace yabt::cmd {
 
@@ -20,8 +20,19 @@ const std::string_view LONG_DESCRIPTION =
 SyncCommand::register_command(cli::CliParser &cli_parser) noexcept {
   yabt::cli::Subcommand &subcommand = cli_parser.register_subcommand(
       "sync", *this, SHORT_DESCRIPTION, LONG_DESCRIPTION);
-  static_cast<void>(subcommand);
-  return runtime::Result<void, std::string>::ok();
+
+  return subcommand.register_flag({
+      .name{"strict"},
+      .short_name{},
+      .optional = true,
+      .type = yabt::cli::FlagType::BOOL,
+      .description{"Refuses to sync if any of the dependencies are not pinned "
+                   "with a hash"},
+      .handler{[this](const cli::Arg &) {
+        this->m_sync_mode = workspace::SyncMode::STRICT;
+        return runtime::Result<void, std::string>::ok();
+      }},
+  });
 }
 
 [[nodiscard]] runtime::Result<void, std::string> SyncCommand::handle_subcommand(
@@ -31,24 +42,12 @@ SyncCommand::register_command(cli::CliParser &cli_parser) noexcept {
         "Unexpected arguments passed to \"sync\" subcommand");
   }
 
-  const module::ModuleFile modfile =
-      RESULT_PROPAGATE(module::ModuleFile::load_module_file("./MODULE.lua"));
-
-  yabt_info("Module name: {}", modfile.name);
-  yabt_info("Module version: {}", modfile.version);
-  yabt_info("Module deps:");
-  for (const auto &[dep_name, dep] : modfile.deps) {
-    yabt_info("\tdep name: {}", dep_name);
-    yabt_info("\tdep url: {}", dep.url);
-    yabt_info("\tdep version: {}", dep.version);
-    yabt_info("\tdep hash: {}", dep.hash);
-    yabt_info("\tdep type: {}", dep.type);
+  const runtime::Result result = workspace::sync_workspace(m_sync_mode);
+  if (!result.is_ok()) {
+    yabt_error("Error syncing dependencies: {}", result.error_value());
+  } else {
+    yabt_info("Dependencies have been synced successfully");
   }
-  yabt_info("Module flags:");
-  for (const auto &[key, value] : modfile.flags) {
-    yabt_info("\t{} = {}", key, value);
-  }
-
   return runtime::Result<void, std::string>::ok();
 }
 

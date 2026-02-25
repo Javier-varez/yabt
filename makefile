@@ -16,7 +16,10 @@ SRCS := src/main.cpp            \
 	src/cli/flag.cpp            \
 	src/process/process.cpp     \
 	src/module/module_file.cpp  \
-	src/utils/string.cpp
+	src/utils/string.cpp        \
+	src/module/module.cpp       \
+	src/module/git_module.cpp   \
+	src/workspace/utils.cpp
 
 CFLAGS := -Wall -Wextra -Werror $(LUAJIT_INCS) -O2 -gdwarf-3 $(INCLUDE_DIRS:%=-I%)
 CXXFLAGS := $(CFLAGS) -std=c++20
