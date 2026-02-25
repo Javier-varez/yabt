@@ -78,6 +78,7 @@ Process::start(const bool capture_stdout) noexcept {
     for (const std::string &arg : m_args) {
       args.push_back(arg.c_str());
     }
+    args.push_back(nullptr);
 
     if (capture_stdout) {
       dup2(stdout_pipes[1], STDOUT_FILENO);
@@ -91,12 +92,12 @@ Process::start(const bool capture_stdout) noexcept {
 
     if (m_cwd.has_value()) {
       runtime::check(chdir(m_cwd.value().c_str()) == 0,
-                     "Chdir to {} failed with: ", m_cwd.value(),
+                     "Chdir to {} failed with: {}", m_cwd.value(),
                      strerror(errno));
     }
 
     execvp(m_exe.c_str(), const_cast<char *const *>(args.data()));
-    runtime::fatal("Child failed to start program: ", strerror(errno));
+    runtime::fatal("Child failed to start program: {}", strerror(errno));
   }
 
   m_status = Status::RUNNING;
