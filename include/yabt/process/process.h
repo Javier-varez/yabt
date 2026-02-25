@@ -10,6 +10,23 @@
 
 namespace yabt::process {
 
+namespace detail {
+
+template <typename... Args>
+[[nodiscard]] std::vector<std::string> to_str_vec(Args &&...args) noexcept {
+  std::vector<std::string> result;
+  result.reserve(sizeof...(Args));
+
+  const auto process_one = [&result](const std::string_view s) {
+    result.push_back(std::string{s});
+  };
+
+  (process_one(std::forward<Args>(args)), ...);
+  return result;
+}
+
+} // namespace detail
+
 class Process {
 public:
   struct NormalExit final {
@@ -28,6 +45,11 @@ public:
     std::string stderr;
     ExitReason exit_reason;
   };
+
+  template <typename... Args>
+  explicit Process(std::string_view executable, Args &&...args) noexcept
+      : Process{executable, std::span<const std::string>{detail::to_str_vec(
+                                std::forward<Args>(args)...)}} {}
 
   explicit Process(std::string_view executable,
                    std::span<const std::string> arguments = {}) noexcept;
