@@ -35,6 +35,12 @@ concept NonVoid = !std::same_as<T, void>;
 
 } // namespace detail
 
+// FIXME: make this class constexpr. Need to refactor to use std::variant
+// instead of placement new and reinterpret_cast (the latter cannot be made
+// constexpr).
+//
+// NOTE: Probably worth adding a `context` method to Result<T, std::string> to
+// add context to errors.
 template <class Ok, class Err> class [[nodiscard]] Result final {
 public:
   // Constructors used for propagating errors or values
