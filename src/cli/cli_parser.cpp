@@ -3,30 +3,13 @@
 #include <string_view>
 
 #include "yabt/cli/cli_parser.h"
+#include "yabt/utils/string.h"
 
 namespace yabt::cli {
 
 using std::string_view_literals::operator""sv;
 
 namespace {
-
-[[nodiscard]] std::string_view trim_left_charset(std::string_view sv,
-                                                 std::string_view chars) {
-  const size_t n = sv.find_first_not_of(chars);
-  if (n == std::string_view::npos) {
-    return sv;
-  }
-  return sv.substr(n);
-}
-
-[[nodiscard]] std::string_view trim_right_charset(std::string_view sv,
-                                                  std::string_view chars) {
-  const size_t n = sv.find_last_not_of(chars);
-  if (n == std::string_view::npos) {
-    return sv;
-  }
-  return sv.substr(0, n + 1);
-}
 
 [[nodiscard]] runtime::Result<std::pair<Flag, Arg>, std::string>
 validate_flag(const Flag &flag, std::string_view name, std::string_view value) {
@@ -87,8 +70,8 @@ parse_long_flag(const std::span<const Flag> &flags, std::string_view sv) {
 
   std::string_view flag_value;
   if (eon != std::string_view::npos) {
-    flag_value = trim_right_charset(
-        trim_left_charset(sv.substr(eon), DELIMITERS), DELIMITERS);
+    flag_value = utils::trim_right_charset(
+        utils::trim_left_charset(sv.substr(eon), DELIMITERS), DELIMITERS);
   }
   return validate_flag(*iter, flag_name, flag_value);
 }
