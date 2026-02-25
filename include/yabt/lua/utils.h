@@ -175,6 +175,11 @@ parse_with_spec(lua_State *const L, LuaStruct<T, Args...>) noexcept {
 
 [[nodiscard]] inline runtime::Result<std::string, std::string>
 parse_with_spec(lua_State *const L, LuaString) noexcept {
+  if (lua_isnil(L, -1)) {
+    // Empty string
+    return runtime::Result<std::string, std::string>::ok("");
+  }
+
   if (!lua_isstring(L, -1)) {
     return runtime::Result<std::string, std::string>::error(
         std::format("Deserializing std::string, but found type {}",

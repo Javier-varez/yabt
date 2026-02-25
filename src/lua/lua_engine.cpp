@@ -1,10 +1,11 @@
-#include <cstdio>
 #include <format>
 #include <map>
 #include <string>
 #include <vector>
 
+#include "yabt/log/log.h"
 #include "yabt/lua/lua_engine.h"
+#include "yabt/lua/utils.h"
 #include "yabt/ninja/build_rule.h"
 #include "yabt/ninja/build_step.h"
 
@@ -48,95 +49,6 @@ int l_add_build_step_with_rule(lua_State *const L) {
 }
 
 namespace {
-
-// Table is supposed to be on top of the stack
-[[nodiscard]] runtime::Result<std::vector<std::string>, std::string>
-read_string_array(lua_State *const L, const char *field) {
-  lua_pushstring(L, field);
-  lua_gettable(L, -2);
-
-  const size_t n = lua_objlen(L, -1);
-  std::vector<std::string> result(n);
-
-  for (size_t i = 1; i <= n; i++) {
-    lua_rawgeti(L, -1, i);
-    if (!lua_isstring(L, -1)) {
-      return runtime::Result<std::vector<std::string>, std::string>::error(
-          std::format("Element at index {} is not a string", i));
-    }
-
-    size_t len{};
-    const char *str = luaL_checklstring(L, -1, &len);
-    result.push_back(std::string(str, len));
-    lua_pop(L, 1);
-  }
-
-  lua_pop(L, 1);
-  return runtime::Result<std::vector<std::string>, std::string>::ok(result);
-}
-
-// Table is supposed to be on top of the stack
-[[nodiscard]] std::string read_string(lua_State *const L, const char *field) {
-  lua_pushstring(L, field);
-  lua_gettable(L, -2);
-
-  size_t len{};
-  const char *str = luaL_checklstring(L, -1, &len);
-  const std::string v(str, len);
-
-  lua_pop(L, 1);
-  return v;
-}
-
-// Table is supposed to be on top of the stack
-[[nodiscard]] runtime::Result<std::map<std::string, std::string>, std::string>
-read_string_map(lua_State *const L, const char *field) {
-  lua_pushstring(L, field);
-  lua_gettable(L, -2);
-
-  if (!lua_istable(L, -1)) {
-    if (!lua_isnil(L, -1)) {
-      return runtime::Result<std::map<std::string, std::string>, std::string>::
-          error(std::format("Type is not a table or nil. Got type: {}",
-                            lua_typename(L, lua_type(L, -1))));
-    }
-    lua_pop(L, 1);
-    return runtime::Result<std::map<std::string, std::string>, std::string>::ok(
-        std::map<std::string, std::string>{});
-  }
-
-  std::map<std::string, std::string> result;
-
-  lua_pushnil(L);
-  while (lua_next(L, -2)) {
-    if (!lua_isstring(L, -2)) {
-      return runtime::Result<std::map<std::string, std::string>, std::string>::
-          error(std::format("Key is not a string type. Got type: {}",
-                            lua_typename(L, lua_type(L, -2))));
-    }
-
-    if (!lua_isstring(L, -1)) {
-      return runtime::Result<std::map<std::string, std::string>, std::string>::
-          error(std::format("Value is not a string type. Got type: {}",
-                            lua_typename(L, lua_type(L, -1))));
-    }
-
-    size_t len{};
-    const char *str = luaL_checklstring(L, -2, &len);
-    std::string key{str, len};
-
-    str = luaL_checklstring(L, -1, &len);
-    std::string value{str, len};
-    result.emplace(std::move(key), std::move(value));
-
-    // drop value, keep key
-    lua_pop(L, 1);
-  }
-
-  lua_pop(L, 1);
-  return runtime::Result<std::map<std::string, std::string>, std::string>::ok(
-      result);
-}
 
 static const luaL_Reg yabt_methods[]{
     {"add_build_step", l_add_build_step},
@@ -214,30 +126,15 @@ LuaEngine::exec_file(std::string_view file_path) noexcept {
 }
 
 runtime::Result<void, std::string> LuaEngine::add_build_step_impl() noexcept {
-  if (!lua_istable(m_state, 1)) {
+  if (lua_gettop(m_state) != 1) {
     return runtime::Result<void, std::string>::error(std::format(
-        "add_build_step called without a table argument. Got type: {}",
-        lua_typename(m_state, lua_type(m_state, -1))));
+        "Expected 1 argument to add_build_step_with_rule, but got: {}",
+        lua_gettop(m_state)));
   }
 
-  auto outs = read_string_array(m_state, "outs");
-  if (!outs.is_ok()) {
-    return runtime::Result<void, std::string>::error(std::format(
-        "While parsing outs field of build_step: {}", outs.error_value()));
-  }
-
-  auto ins = read_string_array(m_state, "ins");
-  if (!ins.is_ok()) {
-    return runtime::Result<void, std::string>::error(std::format(
-        "While parsing ins field of build_step: {}", ins.error_value()));
-  }
-
-  m_build_steps.push_back(ninja::BuildStep{
-      .outs{std::move(outs.ok_value())},
-      .ins{std::move(ins.ok_value())},
-      .cmd{read_string(m_state, "cmd")},
-      .descr{read_string(m_state, "descr")},
-  });
+  const ninja::BuildStep step =
+      RESULT_PROPAGATE(parse_lua_object<ninja::BuildStep>(m_state));
+  m_build_steps.push_back(step);
 
   lua_pop(m_state, 1);
   return runtime::Result<void, std::string>::ok();
@@ -250,8 +147,10 @@ void LuaEngine::add_build_step() noexcept {
       return;
     }
 
+    yabt_error("result {}", result.error_value());
     lua_pushstring(m_state, result.error_value().c_str());
   }
+
   // This call does longjmp, which breaks destructors of data types, since they
   // do not get executed. That's why the data above is in a different block
   lua_error(m_state);
@@ -259,67 +158,23 @@ void LuaEngine::add_build_step() noexcept {
 
 runtime::Result<void, std::string>
 LuaEngine::add_build_step_with_rule_impl() noexcept {
-  if (!lua_istable(m_state, -1)) {
-    return runtime::Result<void, std::string>::error(
-        std::format("add_build_step_with_rule called without build_rule table. "
-                    "Got type: {}",
-                    lua_typename(m_state, lua_type(m_state, -1))));
+  if (lua_gettop(m_state) != 2) {
+    return runtime::Result<void, std::string>::error(std::format(
+        "Expected 2 arguments to add_build_step_with_rule, but got: {}",
+        lua_gettop(m_state)));
   }
 
-  if (!lua_istable(m_state, -2)) {
-    return runtime::Result<void, std::string>::error(
-        std::format("add_build_step_with_rule called without build_step table. "
-                    "Got type: {}",
-                    lua_typename(m_state, lua_type(m_state, -2))));
-  }
-
-  auto variables_map = read_string_map(m_state, "variables");
-  if (!variables_map.is_ok()) {
-    return runtime::Result<void, std::string>::error(
-        std::format("Error parsing variables in build rule: {}",
-                    variables_map.error_value()));
-  }
-
-  const std::string build_rule_name = read_string(m_state, "name");
-  if (m_build_rules.find(build_rule_name) == m_build_rules.cend()) {
-    m_build_rules.insert(std::pair{
-        build_rule_name,
-        ninja::BuildRule{
-            .name{build_rule_name},
-            .cmd{read_string(m_state, "cmd")},
-            .descr{read_string(m_state, "descr")},
-            .variables{std::move(variables_map.ok_value())},
-        },
-    });
+  const ninja::BuildRule rule =
+      RESULT_PROPAGATE(parse_lua_object<ninja::BuildRule>(m_state));
+  if (m_build_rules.find(rule.name) == m_build_rules.cend()) {
+    m_build_rules.insert(std::pair{rule.name, rule});
   }
 
   lua_pop(m_state, 1);
 
-  auto outs = read_string_array(m_state, "outs");
-  if (!outs.is_ok()) {
-    return runtime::Result<void, std::string>::error(std::format(
-        "Error parsing outs in build step with rule: {}", outs.error_value()));
-  }
-
-  auto ins = read_string_array(m_state, "ins");
-  if (!ins.is_ok()) {
-    return runtime::Result<void, std::string>::error(std::format(
-        "Error parsing ins in build step with rule: {}", ins.error_value()));
-  }
-
-  variables_map = read_string_map(m_state, "variables");
-  if (!variables_map.is_ok()) {
-    return runtime::Result<void, std::string>::error(
-        std::format("Error parsing variables in build step with rule: {}",
-                    variables_map.error_value()));
-  }
-
-  m_build_steps_with_rule.push_back(ninja::BuildStepWithRule{
-      .outs{std::move(outs.ok_value())},
-      .ins{std::move(ins.ok_value())},
-      .ruleName{read_string(m_state, "rule_name")},
-      .variables{std::move(variables_map.ok_value())},
-  });
+  const ninja::BuildStepWithRule step =
+      RESULT_PROPAGATE(parse_lua_object<ninja::BuildStepWithRule>(m_state));
+  m_build_steps_with_rule.push_back(step);
 
   lua_pop(m_state, 1);
 
@@ -333,6 +188,7 @@ void LuaEngine::add_build_step_with_rule() noexcept {
       return;
     }
 
+    yabt_error("result {}", result.error_value());
     lua_pushstring(m_state, result.error_value().c_str());
   }
 

@@ -1,5 +1,5 @@
 {
-  description = "luatest";
+  description = "yabt";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
@@ -32,8 +32,12 @@
           vds = pkgs.mkShell {
             nativeBuildInputs = with pkgs; [
               gcc
+
+              # build deps (busted is needed for testing)
               (luajit.withPackages (ps: with ps; [ busted ]))
               pkg-config
+
+              # dev tools
               bear
               gdb
             ];
