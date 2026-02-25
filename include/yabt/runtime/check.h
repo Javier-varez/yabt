@@ -10,7 +10,8 @@ namespace yabt::runtime {
 template <typename... Args>
 [[noreturn]] void fatal(std::format_string<Args...> fmt,
                         Args &&...args) noexcept {
-  const std::string s = std::format(fmt, std::forward<Args>(args)...);
+  std::string s = std::format(fmt, std::forward<Args>(args)...);
+  s.push_back('\n');
 
   size_t written = 0;
   while (written < s.size()) {
