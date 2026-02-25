@@ -24,6 +24,25 @@ LUA_STRUCT_PARSE_SPEC_DEF(                 //
 
 namespace yabt::module {
 
+namespace {
+
+[[nodiscard]] runtime::Result<void, std::string>
+validate_module_file(const ModuleFile &modfile) noexcept {
+  if (modfile.name == "") {
+    return runtime::Result<void, std::string>::error(
+        "Module file has no module name");
+  }
+
+  if (modfile.version != 1) {
+    return runtime::Result<void, std::string>::error(
+        std::format("Unsupported module file version: {}", modfile.version));
+  }
+
+  return runtime::Result<void, std::string>::ok();
+}
+
+} // namespace
+
 [[nodiscard]] runtime::Result<ModuleFile, std::string>
 ModuleFile::load_module_file(const std::filesystem::path path) noexcept {
   lua_State *const L = luaL_newstate();
@@ -45,6 +64,7 @@ ModuleFile::load_module_file(const std::filesystem::path path) noexcept {
   }
 
   const ModuleFile mod = RESULT_PROPAGATE(lua::parse_lua_object<ModuleFile>(L));
+  RESULT_PROPAGATE_DISCARD(validate_module_file(mod));
   return runtime::Result<ModuleFile, std::string>::ok(mod);
 }
 
