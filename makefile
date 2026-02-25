@@ -14,7 +14,8 @@ SRCS := src/main.cpp            \
 	src/cmd/sync.cpp            \
 	src/cli/cli_parser.cpp      \
 	src/cli/flag.cpp            \
-	src/process/process.cpp
+	src/process/process.cpp     \
+	src/module/module_file.cpp
 
 CFLAGS := -Wall -Wextra -Werror $(LUAJIT_INCS) -O2 -gdwarf-3 $(INCLUDE_DIRS:%=-I%)
 CXXFLAGS := $(CFLAGS) -std=c++20

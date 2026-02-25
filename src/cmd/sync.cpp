@@ -4,6 +4,7 @@
 
 #include "yabt/cmd/sync.h"
 #include "yabt/log/log.h"
+#include "yabt/module/module_file.h"
 #include "yabt/process/process.h"
 #include "yabt/runtime/result.h"
 
@@ -33,22 +34,22 @@ SyncCommand::register_command(cli::CliParser &cli_parser) noexcept {
         "Unexpected arguments passed to \"sync\" subcommand");
   }
 
-  process::Process process{"ls"sv, std::vector{std::string{"/home/javier"}}};
-  RESULT_PROPAGATE_DISCARD(process.start(true));
-  const process::Process::ProcessOutput output = process.capture_output();
+  const module::ModuleFile modfile =
+      RESULT_PROPAGATE(module::ModuleFile::load_module_file("./MODULE.lua"));
 
-  yabt_info("Process stdout:\n{}", output.stdout);
-  yabt_info("Process stderr:\n{}", output.stderr);
-
-  std::visit(
-      []<typename T>(const T &v) {
-        if constexpr (std::same_as<T, process::Process::NormalExit>) {
-          yabt_info("Process exited normally: {}", v.exit_code);
-        } else if constexpr (std::same_as<T, process::Process::NormalExit>) {
-          yabt_info("Process received signal: {}", v.signal);
-        }
-      },
-      output.exit_reason);
+  yabt_info("Module name: {}", modfile.name);
+  yabt_info("Module version: {}", modfile.version);
+  yabt_info("Module deps:");
+  for (const module::DependencyDefinition &dep : modfile.deps) {
+    yabt_info("\tdep url: {}", dep.url);
+    yabt_info("\tdep version: {}", dep.version);
+    yabt_info("\tdep sha256: {}", dep.sha256);
+    yabt_info("\tdep type: {}", dep.type);
+  }
+  yabt_info("Module flags:");
+  for (const auto &[key, value] : modfile.flags) {
+    yabt_info("\t{} = {}", key, value);
+  }
 
   return runtime::Result<void, std::string>::ok();
 }
