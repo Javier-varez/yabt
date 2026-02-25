@@ -2,6 +2,8 @@
 
 #include <algorithm>
 #include <filesystem>
+#include <map>
+#include <set>
 #include <unistd.h>
 
 #include "yabt/log/log.h"
@@ -51,6 +53,7 @@ sync_workspace(const SyncMode sync_mode) noexcept {
     std::string hash;
   };
   std::map<std::string, PinnedMod> pinned_modules;
+  std::set<std::string> handled_deps;
 
   auto root_module = RESULT_PROPAGATE(module::open_module(ws_root.value()));
   std::vector<std::unique_ptr<module::Module>> all_modules{};
@@ -67,9 +70,13 @@ sync_workspace(const SyncMode sync_mode) noexcept {
     const std::filesystem::path modfile_path =
         current_module_dir / module::MODULE_FILE_NAME;
 
-    yabt_debug("Reading module file at {}", modfile_path.c_str());
     const module::ModuleFile modfile =
         RESULT_PROPAGATE(module::ModuleFile::load_module_file(modfile_path));
+
+    if (handled_deps.contains(modfile.name)) {
+      continue;
+    }
+    handled_deps.insert(modfile.name);
 
     yabt_debug("Processing dependencies of {}", modfile_path.c_str());
     log::IndentGuard _indent_guard2{};
@@ -91,11 +98,12 @@ sync_workspace(const SyncMode sync_mode) noexcept {
 
       if (pinned_modules.contains(dep_name)) {
         const PinnedMod &pinned = pinned_modules[dep_name];
-        if (pinned.hash != dep.hash) {
+        if (pinned.hash != dep.hash && dep.hash != "") {
           return runtime::Result<void, std::string>::error(std::format(
               "Dependency {} requires hash {}, but it has been pinned to {}",
               dep_name, dep.hash, pinned.hash));
         }
+        yabt_debug("");
         continue;
       }
 
