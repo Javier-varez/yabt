@@ -135,6 +135,12 @@ runtime::Result<void, std::string> LuaEngine::add_build_step_impl() noexcept {
   const ninja::BuildStep step =
       RESULT_PROPAGATE(parse_lua_object<ninja::BuildStep>(m_state));
   m_build_steps.push_back(step);
+  if (step.outs.size() == 0) {
+    return runtime::Result<void, std::string>::error(
+        "Attempted to register build_steps_with_rule without an out");
+  }
+  yabt_debug("Registered build step for: {} with cmd: {}", step.outs[0],
+             step.cmd);
 
   lua_pop(m_state, 1);
   return runtime::Result<void, std::string>::ok();
@@ -147,7 +153,6 @@ void LuaEngine::add_build_step() noexcept {
       return;
     }
 
-    yabt_error("result {}", result.error_value());
     lua_pushstring(m_state, result.error_value().c_str());
   }
 
@@ -168,13 +173,21 @@ LuaEngine::add_build_step_with_rule_impl() noexcept {
       RESULT_PROPAGATE(parse_lua_object<ninja::BuildRule>(m_state));
   if (m_build_rules.find(rule.name) == m_build_rules.cend()) {
     m_build_rules.insert(std::pair{rule.name, rule});
+    yabt_debug("Registered build rule: {}", rule.name);
   }
 
   lua_pop(m_state, 1);
 
   const ninja::BuildStepWithRule step =
       RESULT_PROPAGATE(parse_lua_object<ninja::BuildStepWithRule>(m_state));
+  if (step.outs.size() == 0) {
+    return runtime::Result<void, std::string>::error(
+        "Attempted to register build_steps_with_rule without an out");
+  }
+
   m_build_steps_with_rule.push_back(step);
+  yabt_debug("Registered build step for: {} with rule: {}", step.outs[0],
+             step.rule_name);
 
   lua_pop(m_state, 1);
 
@@ -188,7 +201,6 @@ void LuaEngine::add_build_step_with_rule() noexcept {
       return;
     }
 
-    yabt_error("result {}", result.error_value());
     lua_pushstring(m_state, result.error_value().c_str());
   }
 

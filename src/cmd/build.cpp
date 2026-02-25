@@ -85,7 +85,7 @@ BuildCommand::handle_subcommand(
       printf("%s ", out.c_str());
     }
 
-    printf(": %s ", step.ruleName.c_str());
+    printf(": %s ", step.rule_name.c_str());
     for (const std::string &in : step.ins) {
       printf("%s ", in.c_str());
     }

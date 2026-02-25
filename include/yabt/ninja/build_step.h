@@ -20,7 +20,7 @@ using VariableMap = std::map<std::string, std::string>;
 struct BuildStepWithRule {
   std::vector<std::string> outs;
   std::vector<std::string> ins;
-  std::string ruleName;
+  std::string rule_name;
   VariableMap variables;
 };
 
@@ -40,7 +40,7 @@ LUA_STRUCT_PARSE_SPEC_DEF(                  //
     ::yabt::ninja::BuildStepWithRule,       //
     (std::vector<std::string>, outs),       //
     (std::vector<std::string>, ins),        //
-    (std::string, ruleName),                //
+    (std::string, rule_name),               //
     (::yabt::ninja::VariableMap, variables) //
 );
 
