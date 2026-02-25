@@ -21,10 +21,12 @@ struct DependencyDefinition final {
 
 using FlagMap = std::map<std::string, std::string>;
 
+using DependencyMap = std::map<std::string, DependencyDefinition>;
+
 struct ModuleFile {
   std::string name;
   int version;
-  std::vector<DependencyDefinition> deps;
+  DependencyMap deps;
   FlagMap flags;
 
   [[nodiscard]] static runtime::Result<ModuleFile, std::string>

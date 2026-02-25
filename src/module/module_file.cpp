@@ -12,12 +12,12 @@ LUA_STRUCT_PARSE_SPEC_DEF(                //
     (std::string, type)                   //
 );
 
-LUA_STRUCT_PARSE_SPEC_DEF(                                     //
-    ::yabt::module::ModuleFile,                                //
-    (std::string, name),                                       //
-    (int, version),                                            //
-    (std::vector<::yabt::module::DependencyDefinition>, deps), //
-    (::yabt::module::FlagMap, flags)                           //
+LUA_STRUCT_PARSE_SPEC_DEF(                 //
+    ::yabt::module::ModuleFile,            //
+    (std::string, name),                   //
+    (int, version),                        //
+    (::yabt::module::DependencyMap, deps), //
+    (::yabt::module::FlagMap, flags)       //
 );
 
 } // namespace yabt::lua
