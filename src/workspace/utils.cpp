@@ -143,4 +143,57 @@ sync_workspace(const SyncMode sync_mode) noexcept {
   return runtime::Result<void, std::string>::ok();
 }
 
+runtime::Result<std::vector<std::unique_ptr<module::Module>>, std::string>
+open_workspace() noexcept {
+  const std::optional<std::filesystem::path> ws_root = get_workspace_root();
+  if (!ws_root.has_value()) {
+    return runtime::Result<std::vector<std::unique_ptr<module::Module>>,
+                           std::string>::
+        error(std::format("Could not find workspace root. Are you sure your "
+                          "directory tree contains a {} file?",
+                          module::MODULE_FILE_NAME));
+  }
+
+  const std::filesystem::path deps_dir = ws_root.value() / DEPS_DIR_NAME;
+
+  std::set<std::string> handled_deps;
+
+  yabt_verbose("Found workspace root at {}", ws_root.value().native());
+
+  std::vector<std::unique_ptr<module::Module>> all_modules{};
+  std::deque<std::filesystem::path> queue{ws_root.value()};
+  while (queue.size() != 0) {
+    log::IndentGuard _indent_guard{};
+
+    const std::filesystem::path current_module_dir = queue.front();
+    queue.pop_front();
+
+    const std::filesystem::path modfile_path =
+        current_module_dir / module::MODULE_FILE_NAME;
+
+    const module::ModuleFile modfile =
+        RESULT_PROPAGATE(module::ModuleFile::load_module_file(modfile_path));
+
+    if (handled_deps.contains(modfile.name)) {
+      continue;
+    }
+    handled_deps.insert(modfile.name);
+
+    auto module = RESULT_PROPAGATE(module::open_module(current_module_dir));
+    all_modules.push_back(std::move(module));
+
+    log::IndentGuard _indent_guard2{};
+
+    for (const auto &[dep_name, dep] : modfile.deps) {
+      log::IndentGuard _indent_guard{};
+
+      const std::filesystem::path dep_dir = deps_dir / dep_name;
+      queue.push_back(dep_dir);
+    }
+  }
+
+  return runtime::Result<std::vector<std::unique_ptr<module::Module>>,
+                         std::string>::ok(std::move(all_modules));
+}
+
 } // namespace yabt::workspace

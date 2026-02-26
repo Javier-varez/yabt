@@ -2,7 +2,9 @@
 
 #include <filesystem>
 #include <optional>
+#include <vector>
 
+#include "yabt/module/module.h"
 #include "yabt/runtime/result.h"
 
 namespace yabt::workspace {
@@ -19,5 +21,8 @@ get_workspace_root() noexcept;
 
 [[nodiscard]] runtime::Result<void, std::string>
     sync_workspace(SyncMode) noexcept;
+
+runtime::Result<std::vector<std::unique_ptr<module::Module>>, std::string>
+open_workspace() noexcept;
 
 } // namespace yabt::workspace
