@@ -56,8 +56,6 @@ sync_workspace(const SyncMode sync_mode) noexcept {
   std::set<std::string> handled_deps;
 
   auto root_module = RESULT_PROPAGATE(module::open_module(ws_root.value()));
-  std::vector<std::unique_ptr<module::Module>> all_modules{};
-  all_modules.push_back(std::move(root_module));
   yabt_verbose("Found workspace root at {}", ws_root.value().native());
 
   std::deque<std::filesystem::path> queue{ws_root.value()};
@@ -107,8 +105,6 @@ sync_workspace(const SyncMode sync_mode) noexcept {
         continue;
       }
 
-      // Check that the given hash is an ancestor of the version string
-      // (branch/tag)
       RESULT_PROPAGATE_DISCARD(module->fetch());
 
       if (dep.hash != "") {
@@ -140,7 +136,6 @@ sync_workspace(const SyncMode sync_mode) noexcept {
       yabt_debug("Pinning dependency {} to {}", dep_name, target_revision);
       yabt_debug("");
 
-      all_modules.push_back(std::move(module));
       queue.push_back(dep_dir);
     }
   }
