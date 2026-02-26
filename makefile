@@ -21,6 +21,7 @@ SRCS := src/yabt/main.cpp            \
 	src/yabt/module/git_module.cpp   \
 	src/yabt/workspace/utils.cpp     \
 	src/yabt/ninja/ninja.cpp         \
+	src/yabt/build/build.cpp
 
 CFLAGS := -Wall -Wextra -Werror $(LUAJIT_INCS) -O2 -gdwarf-3 $(INCLUDE_DIRS:%=-I%)
 CXXFLAGS := $(CFLAGS) -std=c++20

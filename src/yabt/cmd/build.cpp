@@ -2,10 +2,13 @@
 #include <string>
 #include <string_view>
 
+#include "yabt/build/build.h"
 #include "yabt/cli/args.h"
 #include "yabt/cmd/build.h"
-#include "yabt/lua/lua_engine.h"
+#include "yabt/ninja/ninja.h"
+#include "yabt/process/process.h"
 #include "yabt/runtime/result.h"
+#include "yabt/workspace/utils.h"
 
 namespace yabt::cmd {
 
@@ -38,64 +41,38 @@ BuildCommand::register_command(cli::CliParser &cli_parser) noexcept {
 [[nodiscard]] runtime::Result<void, std::string>
 BuildCommand::handle_subcommand(
     std::span<const std::string_view> /* unparsed_args */) noexcept {
-  yabt::lua::LuaEngine engine =
-      RESULT_PROPAGATE(yabt::lua::LuaEngine::construct());
 
-  RESULT_PROPAGATE_DISCARD(engine.exec_file("main.lua"));
-
-  const auto build_steps = engine.build_steps();
-  const auto build_steps_with_rule = engine.build_steps_with_rule();
-  const auto build_rules = engine.build_rules();
-
-  // Rules
-  size_t i = 0;
-  for (const ninja::BuildStep &step : build_steps) {
-    printf("rule step%ld\n", i++);
-    printf("    command = %s\n", step.cmd.c_str());
-    printf("    description = %s\n", step.descr.c_str());
+  const std::optional<std::filesystem::path> ws_root =
+      workspace::get_workspace_root();
+  if (!ws_root.has_value()) {
+    return runtime::Result<void, std::string>::error(
+        std::format("Could not find workspace root. Are you sure your "
+                    "directory tree contains a {} file?",
+                    module::MODULE_FILE_NAME));
   }
 
-  for (const auto &[name, rule] : build_rules) {
-    printf("rule %s\n", rule.name.c_str());
-    printf("    command = %s\n", rule.cmd.c_str());
-    printf("    description = %s\n", rule.descr.c_str());
-    for (const auto &v : rule.variables) {
-      printf("    %s = %s\n", v.first.c_str(), v.second.c_str());
-    }
-  }
+  auto modules = RESULT_PROPAGATE(workspace::open_workspace(ws_root.value()));
+  auto lua_engine =
+      RESULT_PROPAGATE(build::prepare_lua_engine(ws_root.value(), modules));
+  RESULT_PROPAGATE_DISCARD(
+      build::invoke_rule_initializers(lua_engine, modules));
+  RESULT_PROPAGATE_DISCARD(build::invoke_build_targets(lua_engine, modules));
 
-  // Build vals
-  i = 0;
-  for (const ninja::BuildStep &step : build_steps) {
-    printf("build ");
-    for (const std::string &out : step.outs) {
-      printf("%s ", out.c_str());
-    }
+  const std::filesystem::path ninja_file =
+      ws_root.value() / workspace::NINJA_FILE_PATH;
 
-    printf(": step%ld", i++);
-    for (const std::string &in : step.ins) {
-      printf("%s ", in.c_str());
-    }
-    printf("\n");
-  }
+  RESULT_PROPAGATE_DISCARD(ninja::save_ninja_file(
+      ninja_file, lua_engine.build_rules(), lua_engine.build_steps(),
+      lua_engine.build_steps_with_rule()));
 
-  for (const ninja::BuildStepWithRule &step : build_steps_with_rule) {
-    printf("build ");
-    for (const std::string &out : step.outs) {
-      printf("%s ", out.c_str());
-    }
+  const std::string threads = std::format("{}", m_threads);
+  process::Process ninja{"ninja", "-j", threads};
+  ninja.set_cwd((ws_root.value() / workspace::BUILD_DIR_NAME).native());
+  RESULT_PROPAGATE_DISCARD(ninja.start());
+  auto exit_reason = ninja.wait_completion();
 
-    printf(": %s ", step.rule_name.c_str());
-    for (const std::string &in : step.ins) {
-      printf("%s ", in.c_str());
-    }
-    printf("\n");
-    for (const auto &v : step.variables) {
-      if (v.first.length() == 0 || v.second.length() == 0)
-        continue;
-      printf("    %s = %s\n", v.first.c_str(), v.second.c_str());
-    }
-  }
+  // FIXME: Process exit reason
+  static_cast<void>(exit_reason);
 
   return runtime::Result<void, std::string>::ok();
 }

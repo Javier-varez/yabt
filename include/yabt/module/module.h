@@ -10,6 +10,8 @@
 namespace yabt::module {
 
 constexpr static std::string_view MODULE_FILE_NAME = "MODULE.lua";
+constexpr static std::string_view RULES_DIR_NAME = "rules";
+constexpr static std::string_view SRC_DIR_NAME = "src";
 
 class Module {
 public:
