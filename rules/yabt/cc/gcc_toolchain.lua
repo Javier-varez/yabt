@@ -4,7 +4,7 @@ require 'yabt.cc.toolchain'.register_toolchain_as_default{
     cxxcompiler = 'g++',
     assembler = 'as',
     archiver = 'ar',
-    linker = 'ld',
+    linker = 'g++',
     cflags = { '-Wall', '-Wextra', '-Werror', '-std=c17', '-O2', '-gdwarf-3' },
     cxxflags = { '-Wall', '-Wextra', '-Werror', '-std=c++20', '-O2', '-gdwarf-3' },
     asflags = {},
