@@ -83,6 +83,8 @@ LuaEngine::construct() noexcept {
   luaopen_yabt(engine.m_state);
 
   init_registry(engine.m_state, &engine);
+  set_package_path(engine.m_state, "");
+  set_package_cpath(engine.m_state, "");
 
   return runtime::Result<LuaEngine, std::string>::ok(std::move(engine));
 }
@@ -123,6 +125,19 @@ LuaEngine::exec_file(std::string_view file_path) noexcept {
   }
 
   return runtime::Result<void, std::string>::ok();
+}
+
+void LuaEngine::set_path(std::span<const std::string> paths) noexcept {
+  std::string path{};
+
+  bool needs_delimiter = false;
+  for (const std::string &p : paths) {
+    if (needs_delimiter)
+      path.push_back(';');
+    path.append(p);
+    needs_delimiter = true;
+  }
+  set_package_path(m_state, path.c_str());
 }
 
 runtime::Result<void, std::string> LuaEngine::add_build_step_impl() noexcept {

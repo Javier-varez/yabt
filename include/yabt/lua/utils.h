@@ -258,4 +258,20 @@ parse_with_spec(lua_State *const L, LuaInteger) noexcept {
         _LUA_STRUCT_EXPAND_FIELD_NAME, struct_type, __VA_ARGS__)>;             \
   };
 
+inline void set_package_path(lua_State *const L, const std::string &value) {
+  runtime::check(lua_checkstack(L, 2), "Exceeded maximum Lua stack size");
+  lua_getglobal(L, "package");
+  lua_pushstring(L, value.c_str());
+  lua_setfield(L, -2, "path");
+  lua_pop(L, 1);
+}
+
+inline void set_package_cpath(lua_State *const L, const std::string &value) {
+  runtime::check(lua_checkstack(L, 2), "Exceeded maximum Lua stack size");
+  lua_getglobal(L, "package");
+  lua_pushstring(L, value.c_str());
+  lua_setfield(L, -2, "cpath");
+  lua_pop(L, 1);
+}
+
 } // namespace yabt::lua

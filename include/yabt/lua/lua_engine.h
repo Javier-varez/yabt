@@ -27,6 +27,8 @@ public:
 
   ~LuaEngine() noexcept;
 
+  void set_path(std::span<const std::string> paths) noexcept;
+
   [[nodiscard]] runtime::Result<void, std::string>
   exec_file(std::string_view file_path) noexcept;
 
