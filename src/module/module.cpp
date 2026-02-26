@@ -4,6 +4,14 @@
 
 namespace yabt::module {
 
+std::optional<std::filesystem::path> Module::rules_dir() const noexcept {
+  std::filesystem::path rules_dir = disk_path() / "rules";
+  if (std::filesystem::exists(rules_dir)) {
+    return rules_dir;
+  }
+  return std::nullopt;
+}
+
 [[nodiscard]] runtime::Result<std::unique_ptr<Module>, std::string>
 open_module(const std::filesystem::path &mod_dir) {
   if (const std::filesystem::path git_dir = mod_dir / ".git";

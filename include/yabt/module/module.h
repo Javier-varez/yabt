@@ -15,6 +15,8 @@ class Module {
 public:
   [[nodiscard]] virtual std::string name() const noexcept = 0;
 
+  [[nodiscard]] virtual std::filesystem::path disk_path() const noexcept = 0;
+
   [[nodiscard]] virtual runtime::Result<std::string, std::string>
   head() const noexcept = 0;
 
@@ -27,6 +29,8 @@ public:
 
   [[nodiscard]] virtual runtime::Result<void, std::string>
   checkout(std::string_view revision) const noexcept = 0;
+
+  [[nodiscard]] std::optional<std::filesystem::path> rules_dir() const noexcept;
 
   virtual ~Module() = default;
 };

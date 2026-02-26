@@ -73,6 +73,10 @@ GitModule::GitModule(const std::filesystem::path &path) noexcept
   return m_path.filename().string();
 }
 
+[[nodiscard]] std::filesystem::path GitModule::disk_path() const noexcept {
+  return m_path;
+}
+
 [[nodiscard]] runtime::Result<std::string, std::string>
 GitModule::head() const noexcept {
   const ProcessOutput process_output = RESULT_PROPAGATE(exec_git_command(

@@ -21,6 +21,8 @@ public:
 
   [[nodiscard]] std::string name() const noexcept final;
 
+  [[nodiscard]] std::filesystem::path disk_path() const noexcept final;
+
   [[nodiscard]] runtime::Result<std::string, std::string>
   head() const noexcept final;
 
