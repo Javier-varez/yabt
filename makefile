@@ -6,20 +6,20 @@ LUAJIT_INCS := $(shell pkg-config --cflags luajit)
 
 INCLUDE_DIRS := include
 
-SRCS := src/main.cpp            \
-	src/lua/lua_engine.cpp      \
-	src/log/log.cpp             \
-	src/cmd/build.cpp           \
-	src/cmd/help.cpp            \
-	src/cmd/sync.cpp            \
-	src/cli/cli_parser.cpp      \
-	src/cli/flag.cpp            \
-	src/process/process.cpp     \
-	src/module/module_file.cpp  \
-	src/utils/string.cpp        \
-	src/module/module.cpp       \
-	src/module/git_module.cpp   \
-	src/workspace/utils.cpp
+SRCS := src/yabt/main.cpp            \
+	src/yabt/lua/lua_engine.cpp      \
+	src/yabt/log/log.cpp             \
+	src/yabt/cmd/build.cpp           \
+	src/yabt/cmd/help.cpp            \
+	src/yabt/cmd/sync.cpp            \
+	src/yabt/cli/cli_parser.cpp      \
+	src/yabt/cli/flag.cpp            \
+	src/yabt/process/process.cpp     \
+	src/yabt/module/module_file.cpp  \
+	src/yabt/utils/string.cpp        \
+	src/yabt/module/module.cpp       \
+	src/yabt/module/git_module.cpp   \
+	src/yabt/workspace/utils.cpp
 
 CFLAGS := -Wall -Wextra -Werror $(LUAJIT_INCS) -O2 -gdwarf-3 $(INCLUDE_DIRS:%=-I%)
 CXXFLAGS := $(CFLAGS) -std=c++20
