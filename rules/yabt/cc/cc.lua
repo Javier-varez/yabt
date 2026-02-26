@@ -1,5 +1,7 @@
 local M = {}
 
+local path = require 'yabt.core.path'
+
 local fileExtToLangMap = {
     ['cc'] = 'C++',
     ['cpp'] = 'C++',
@@ -113,7 +115,7 @@ function ObjectFile:build(ctx)
     local flags = self[lang_to_flag_member[language]] or {}
     if self.includes ~= nil then
         for _, inc in ipairs(self.includes) do
-            table.insert(flags, '-I' .. inc)
+            table.insert(flags, '-I' .. inc:absolute())
         end
     end
 
@@ -142,23 +144,27 @@ end
 ---@field asflags ?string[]
 ---@field toolchain ?Toolchain
 ---@field always_link ?boolean
+---@field private module_path ?Path
 local Library = {}
 
----@param obj Library
-function Library:new(obj)
-    setmetatable(obj, self)
+---@param lib Library
+function Library:new(lib)
+    lib.module_path = path.InPath:new_relative(MODULE_PATH .. '/include')
+    setmetatable(lib, self)
     self.__index = self
-    return obj
+    return lib
 end
 
 ---@param ctx Context
 function Library:build(ctx)
     local objs = {}
+    local includes = self.includes or {}
+    table.insert(includes, self.module_path)
     for _, src in ipairs(self.srcs) do
         local obj = ObjectFile:new({
             out = src:withExt('o'),
             src = src,
-            includes = self.includes,
+            includes = includes,
             cxxflags = self.cxxflags,
             cflags = self.cflags,
             asflags = self.asflags,

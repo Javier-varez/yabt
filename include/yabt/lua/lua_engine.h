@@ -58,6 +58,7 @@ private:
   add_build_step_with_rule_impl() noexcept;
 
   lua_State *m_state;
+  std::filesystem::path m_workspace_root;
 
   std::vector<ninja::BuildStep> m_build_steps;
   std::vector<ninja::BuildStepWithRule> m_build_steps_with_rule;

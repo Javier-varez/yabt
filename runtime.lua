@@ -29,11 +29,10 @@ local sandbox_metatable = {
     end
 }
 
-local InPath = require 'yabt.core.path'.InPath
-local OutPath = require 'yabt.core.path'.OutPath
+local InPath = require('yabt.core.path').InPath
+local OutPath = require('yabt.core.path').OutPath
 
-local function append_path_methods(t, path)
-    local relpath = '/src/' .. path .. '/'
+local function append_path_methods(t, relpath)
     t.inp = function(v)
         return InPath:new_relative(relpath .. v)
     end
@@ -61,8 +60,8 @@ local function append_path_methods(t, path)
     end
 end
 
-run_sandbox_for_mod = function(file)
-    local modname = get_module_name(file)
+run_sandbox_for_mod = function(build_spec)
+    local modname = get_module_name(build_spec)
     local mod = modules[modname]
     if mod == nil then
         error('Requested unknown module ' .. mod)
@@ -72,20 +71,24 @@ run_sandbox_for_mod = function(file)
         -- TODO: Force this to only be able to ADD to it
         targets = {},
     }
-    append_path_methods(sandbox, file)
+    append_path_methods(sandbox, mod.relative_path .. '/src/' .. build_spec .. '/')
     setmetatable(sandbox, sandbox_metatable)
 
-    local file_path = modules[modname].path .. '/src/' .. file .. '/BUILD.lua'
+    local file_path = modules[modname].path .. '/src/' .. build_spec .. '/BUILD.lua'
 
     local f = assert(loadfile(file_path))
     setfenv(f, sandbox)
 
+    local saved_module_path = MODULE_PATH
+    MODULE_PATH = mod.relative_path
     local ok, err = pcall(f)
     if not ok then
+        -- FIXME: Raise the error after all files are processed
         print('Error running file: ' .. err)
     end
+    MODULE_PATH = saved_module_path
 
-    targets_per_path[file] = sandbox.targets
+    targets_per_path[build_spec] = sandbox.targets
 end
 
 for _, mod in pairs(modules) do
@@ -95,9 +98,8 @@ for _, mod in pairs(modules) do
 end
 
 local ctx = require 'yabt.core.context'
-for path, targets in pairs(targets_per_path) do
-    for target_name, target in pairs(targets) do
-        print('Registering target ' .. target_name .. ' in path ' .. path)
+for _, targets in pairs(targets_per_path) do
+    for _, target in pairs(targets) do
         target:build(ctx)
     end
 end

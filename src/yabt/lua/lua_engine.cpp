@@ -84,6 +84,7 @@ LuaEngine::construct(const std::filesystem::path &workspace_root) noexcept {
   LuaEngine engine;
 
   engine.m_state = luaL_newstate();
+  engine.m_workspace_root = workspace_root;
   if (engine.m_state == nullptr) {
     return runtime::Result<LuaEngine, std::string>::error(
         "Unable to create lua state");
@@ -250,6 +251,11 @@ LuaEngine::register_module(const std::string &name,
   // Path
   lua_pushstring(m_state, path.c_str());
   lua_setfield(m_state, -2, "path");
+
+  const std::filesystem::path relative_path =
+      std::filesystem::relative(path, m_workspace_root);
+  lua_pushstring(m_state, relative_path.c_str());
+  lua_setfield(m_state, -2, "relative_path");
 
   // build files
   lua_newtable(m_state);
