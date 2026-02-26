@@ -71,6 +71,12 @@ void luaopen_yabt(lua_State *const L,
   lua_setglobal(L, "OUTPUT_DIR");
 }
 
+void init_modules_global(lua_State *const L) noexcept {
+  runtime::check(lua_checkstack(L, 1), "Exceeded maximum Lua stack size");
+  lua_newtable(L);
+  lua_setglobal(L, "modules");
+}
+
 } // namespace
 
 [[nodiscard]] yabt::runtime::Result<LuaEngine, std::string>
@@ -89,6 +95,8 @@ LuaEngine::construct(const std::filesystem::path &workspace_root) noexcept {
   init_registry(engine.m_state, &engine);
   set_package_path(engine.m_state, "");
   set_package_cpath(engine.m_state, "");
+
+  init_modules_global(engine.m_state);
 
   return runtime::Result<LuaEngine, std::string>::ok(std::move(engine));
 }
@@ -226,6 +234,36 @@ void LuaEngine::add_build_step_with_rule() noexcept {
   // This call does longjmp, which breaks destructors of data types, since they
   // do not get executed. That's why the data above is in a different block
   lua_error(m_state);
+}
+
+[[nodiscard]] runtime::Result<void, std::string>
+LuaEngine::register_module(const std::string &name,
+                           const std::filesystem::path &path,
+                           std::span<const std::string> build_files) noexcept {
+  runtime::check(lua_checkstack(m_state, 4), "Exceeded maximum Lua stack size");
+
+  lua_getglobal(m_state, "modules");
+  lua_newtable(m_state);
+
+  // Fill in module table
+
+  // Path
+  lua_pushstring(m_state, path.c_str());
+  lua_setfield(m_state, -2, "path");
+
+  // build files
+  lua_newtable(m_state);
+  for (size_t i = 0; i < build_files.size(); i++) {
+    lua_pushstring(m_state, build_files[i].c_str());
+    lua_rawseti(m_state, -2, i + 1);
+  }
+  lua_setfield(m_state, -2, "build_files");
+
+  // Save module
+  lua_setfield(m_state, -2, name.c_str());
+
+  lua_pop(m_state, 1); // the modules global
+  return runtime::Result<void, std::string>::ok();
 }
 
 [[nodiscard]] std::span<const ninja::BuildStep>
