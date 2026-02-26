@@ -1,5 +1,6 @@
 #pragma once
 
+#include <filesystem>
 #include <map>
 #include <span>
 #include <string>
@@ -18,7 +19,7 @@ namespace yabt::lua {
 class LuaEngine {
 public:
   [[nodiscard]] static yabt::runtime::Result<LuaEngine, std::string>
-  construct() noexcept;
+  construct(const std::filesystem::path &workspace_root) noexcept;
 
   LuaEngine(const LuaEngine &) noexcept = delete;
   LuaEngine(LuaEngine &&) noexcept;

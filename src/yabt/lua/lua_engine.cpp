@@ -56,21 +56,25 @@ static const luaL_Reg yabt_methods[]{
     {nullptr, nullptr},
 };
 
-void luaopen_yabt(lua_State *const L) noexcept {
+void luaopen_yabt(lua_State *const L,
+                  const std::filesystem::path &workspace_root) noexcept {
   luaL_register(L, "yabt_native", yabt_methods);
   lua_pop(L, 1);
 
-  lua_pushstring(L, "source/");
+  runtime::check(lua_checkstack(L, 2), "Exceeded maximum Lua stack size");
+
+  lua_pushstring(L, workspace_root.c_str());
   lua_setglobal(L, "SOURCE_DIR");
 
-  lua_pushstring(L, "output/");
+  const std::filesystem::path output_dir = workspace_root / "BUILD";
+  lua_pushstring(L, output_dir.c_str());
   lua_setglobal(L, "OUTPUT_DIR");
 }
 
 } // namespace
 
 [[nodiscard]] yabt::runtime::Result<LuaEngine, std::string>
-LuaEngine::construct() noexcept {
+LuaEngine::construct(const std::filesystem::path &workspace_root) noexcept {
   LuaEngine engine;
 
   engine.m_state = luaL_newstate();
@@ -80,7 +84,7 @@ LuaEngine::construct() noexcept {
   }
 
   luaL_openlibs(engine.m_state);
-  luaopen_yabt(engine.m_state);
+  luaopen_yabt(engine.m_state, workspace_root);
 
   init_registry(engine.m_state, &engine);
   set_package_path(engine.m_state, "");

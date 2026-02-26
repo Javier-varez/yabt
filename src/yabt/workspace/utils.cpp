@@ -38,16 +38,9 @@ get_workspace_root() noexcept {
 }
 
 runtime::Result<void, std::string>
-sync_workspace(const SyncMode sync_mode) noexcept {
-  const std::optional<std::filesystem::path> ws_root = get_workspace_root();
-  if (!ws_root.has_value()) {
-    return runtime::Result<void, std::string>::error(
-        std::format("Could not find workspace root. Are you sure your "
-                    "directory tree contains a {} file?",
-                    module::MODULE_FILE_NAME));
-  }
-
-  const std::filesystem::path deps_dir = ws_root.value() / DEPS_DIR_NAME;
+sync_workspace(std::filesystem::path ws_root,
+               const SyncMode sync_mode) noexcept {
+  const std::filesystem::path deps_dir = ws_root / DEPS_DIR_NAME;
 
   struct PinnedMod {
     std::string hash;
@@ -55,10 +48,10 @@ sync_workspace(const SyncMode sync_mode) noexcept {
   std::map<std::string, PinnedMod> pinned_modules;
   std::set<std::string> handled_deps;
 
-  auto root_module = RESULT_PROPAGATE(module::open_module(ws_root.value()));
-  yabt_verbose("Found workspace root at {}", ws_root.value().native());
+  auto root_module = RESULT_PROPAGATE(module::open_module(ws_root));
+  yabt_verbose("Found workspace root at {}", ws_root.native());
 
-  std::deque<std::filesystem::path> queue{ws_root.value()};
+  std::deque<std::filesystem::path> queue{ws_root};
   while (queue.size() != 0) {
     log::IndentGuard _indent_guard{};
 
@@ -144,24 +137,15 @@ sync_workspace(const SyncMode sync_mode) noexcept {
 }
 
 runtime::Result<std::vector<std::unique_ptr<module::Module>>, std::string>
-open_workspace() noexcept {
-  const std::optional<std::filesystem::path> ws_root = get_workspace_root();
-  if (!ws_root.has_value()) {
-    return runtime::Result<std::vector<std::unique_ptr<module::Module>>,
-                           std::string>::
-        error(std::format("Could not find workspace root. Are you sure your "
-                          "directory tree contains a {} file?",
-                          module::MODULE_FILE_NAME));
-  }
-
-  const std::filesystem::path deps_dir = ws_root.value() / DEPS_DIR_NAME;
+open_workspace(const std::filesystem::path &ws_root) noexcept {
+  const std::filesystem::path deps_dir = ws_root / DEPS_DIR_NAME;
 
   std::set<std::string> handled_deps;
 
-  yabt_verbose("Found workspace root at {}", ws_root.value().native());
+  yabt_verbose("Found workspace root at {}", ws_root.native());
 
   std::vector<std::unique_ptr<module::Module>> all_modules{};
-  std::deque<std::filesystem::path> queue{ws_root.value()};
+  std::deque<std::filesystem::path> queue{ws_root};
   while (queue.size() != 0) {
     log::IndentGuard _indent_guard{};
 

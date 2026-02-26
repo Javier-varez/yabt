@@ -20,9 +20,9 @@ enum class SyncMode {
 get_workspace_root() noexcept;
 
 [[nodiscard]] runtime::Result<void, std::string>
-    sync_workspace(SyncMode) noexcept;
+sync_workspace(std::filesystem::path ws_root, SyncMode) noexcept;
 
 runtime::Result<std::vector<std::unique_ptr<module::Module>>, std::string>
-open_workspace() noexcept;
+open_workspace(const std::filesystem::path &ws_root) noexcept;
 
 } // namespace yabt::workspace

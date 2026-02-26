@@ -42,7 +42,17 @@ SyncCommand::register_command(cli::CliParser &cli_parser) noexcept {
         "Unexpected arguments passed to \"sync\" subcommand");
   }
 
-  const runtime::Result result = workspace::sync_workspace(m_sync_mode);
+  const std::optional<std::filesystem::path> ws_root =
+      workspace::get_workspace_root();
+  if (!ws_root.has_value()) {
+    return runtime::Result<void, std::string>::error(
+        std::format("Could not find workspace root. Are you sure your "
+                    "directory tree contains a {} file?",
+                    module::MODULE_FILE_NAME));
+  }
+
+  const runtime::Result result =
+      workspace::sync_workspace(ws_root.value(), m_sync_mode);
   if (!result.is_ok()) {
     yabt_error("Error syncing dependencies: {}", result.error_value());
   } else {
