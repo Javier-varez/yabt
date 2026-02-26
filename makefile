@@ -19,7 +19,8 @@ SRCS := src/yabt/main.cpp            \
 	src/yabt/utils/string.cpp        \
 	src/yabt/module/module.cpp       \
 	src/yabt/module/git_module.cpp   \
-	src/yabt/workspace/utils.cpp
+	src/yabt/workspace/utils.cpp     \
+	src/yabt/ninja/ninja.cpp         \
 
 CFLAGS := -Wall -Wextra -Werror $(LUAJIT_INCS) -O2 -gdwarf-3 $(INCLUDE_DIRS:%=-I%)
 CXXFLAGS := $(CFLAGS) -std=c++20
