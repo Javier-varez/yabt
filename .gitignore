@@ -5,3 +5,6 @@
 compile_commands.json
 DEPS
 BUILD
+BUILD_STAGE1
+BUILD_STAGE2
+yabt
