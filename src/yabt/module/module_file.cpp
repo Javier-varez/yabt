@@ -58,7 +58,7 @@ ModuleFile::load_module_file(const std::filesystem::path path) noexcept {
   // luaL_openlibs(L);
 
   const int err = luaL_dofile(L, path.c_str());
-  if (err != LUA_OK) {
+  if (err != 0 /* LUA_OK */) {
     const std::string error_msg =
         RESULT_PROPAGATE(lua::parse_lua_object<std::string>(L));
     return runtime::Result<ModuleFile, std::string>::error(

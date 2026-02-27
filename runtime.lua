@@ -4,7 +4,7 @@ local function get_module_name(path)
     return string.match(path, '^([^/]*).*')
 end
 
-local run_sandbox_for_mod = nil
+local run_sandbox_for_mod
 
 local function import(path)
     local modname = get_module_name(path)

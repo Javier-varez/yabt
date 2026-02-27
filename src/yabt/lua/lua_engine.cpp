@@ -165,7 +165,7 @@ LuaEngine::~LuaEngine() noexcept {
 runtime::Result<void, std::string>
 LuaEngine::exec_file(std::string_view file_path) noexcept {
   const int result = luaL_dofile(m_state, std::string{file_path}.c_str());
-  if (result != LUA_OK) {
+  if (result != 0 /* LUA_OK */) {
     const char *str = luaL_checklstring(m_state, 1, nullptr);
     return runtime::Result<void, std::string>::error(
         std::format("failed to run file: {}", str));
