@@ -21,7 +21,7 @@ exec_git_command(Args &&...args) noexcept {
   process::Process git_proc{"git", std::forward<Args>(args)...};
   RESULT_PROPAGATE_DISCARD(git_proc.start(true));
   return runtime::Result<process::Process::ProcessOutput, std::string>::ok(
-      git_proc.capture_output());
+      git_proc.process_output());
 }
 } // namespace
 
@@ -52,7 +52,7 @@ GitModule::open_or_fetch_module(const std::filesystem::path &mod_dir,
       RESULT_PROPAGATE(exec_git_command("clone", mod_url, mod_dir.native()));
   if (runtime::Result result = process_output.to_result(); result.is_error()) {
     yabt_error("Error cloning git module {}\nstderr: {}", mod_url,
-               process_output.stderr);
+               process_output.stderr.value_or(""));
     RESULT_PROPAGATE_DISCARD(result);
   }
 
@@ -83,7 +83,7 @@ GitModule::head() const noexcept {
       "-C", m_path.native(), "rev-list", "--max-count=1", "HEAD"));
   RESULT_PROPAGATE_DISCARD(process_output.to_result());
   return runtime::Result<std::string, std::string>::ok(
-      std::string{utils::trim_whitespace(process_output.stdout)});
+      std::string{utils::trim_whitespace(process_output.stdout.value_or(""))});
 }
 
 [[nodiscard]] runtime::Result<void, std::string>
@@ -106,14 +106,14 @@ GitModule::is_ancestor(std::string_view ancestor,
           if (v.exit_code != 0 && v.exit_code != 1) {
             return runtime::Result<bool, std::string>::error(
                 std::format("Exited with code {}\nstderr: {}", v.exit_code,
-                            process_output.stderr));
+                            process_output.stderr.value_or("")));
           }
           return runtime::Result<bool, std::string>::ok(!v.exit_code);
         } else if constexpr (std::same_as<T,
                                           process::Process::UnhandledSignal>) {
           return runtime::Result<bool, std::string>::error(
               std::format("Exited with signal {}\nstderr: {}", v.signal,
-                          process_output.stderr));
+                          process_output.stderr.value_or("")));
         }
         runtime::fatal("Unhandled type");
       },

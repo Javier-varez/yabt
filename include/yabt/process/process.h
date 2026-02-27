@@ -41,8 +41,8 @@ public:
   using ExitReason = std::variant<NormalExit, UnhandledSignal>;
 
   struct ProcessOutput final {
-    std::string stdout;
-    std::string stderr;
+    std::optional<std::string> stdout;
+    std::optional<std::string> stderr;
     ExitReason exit_reason;
 
     [[nodiscard]] runtime::Result<void, std::string> to_result() const noexcept;
@@ -69,9 +69,7 @@ public:
   [[nodiscard]] runtime::Result<void, std::string>
   start(bool capture_stdout = false) noexcept;
 
-  [[nodiscard]] ExitReason wait_completion() noexcept;
-
-  [[nodiscard]] ProcessOutput capture_output() noexcept;
+  [[nodiscard]] ProcessOutput process_output() noexcept;
 
 private:
   enum class Status {
@@ -88,6 +86,8 @@ private:
   int m_stdout_read_pipe{-1};
   int m_stderr_read_pipe{-1};
   int m_exit_code{};
+
+  [[nodiscard]] ExitReason wait_completion() noexcept;
 };
 
 } // namespace yabt::process

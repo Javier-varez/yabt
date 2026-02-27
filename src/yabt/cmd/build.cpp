@@ -69,12 +69,7 @@ BuildCommand::handle_subcommand(
   process::Process ninja{"ninja", "-j", threads};
   ninja.set_cwd((ws_root.value() / workspace::BUILD_DIR_NAME).native());
   RESULT_PROPAGATE_DISCARD(ninja.start());
-  auto exit_reason = ninja.wait_completion();
-
-  // FIXME: Process exit reason
-  static_cast<void>(exit_reason);
-
-  return runtime::Result<void, std::string>::ok();
+  return ninja.process_output().to_result();
 }
 
 } // namespace yabt::cmd

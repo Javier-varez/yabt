@@ -15,11 +15,13 @@ Process::ProcessOutput::to_result() const noexcept {
           if (v.exit_code == 0) {
             return runtime::Result<void, std::string>::ok();
           }
-          return runtime::Result<void, std::string>::error(std::format(
-              "Exited with code {}\nstderr: {}", v.exit_code, stderr));
+          return runtime::Result<void, std::string>::error(
+              std::format("Exited with code {}\nstderr: {}", v.exit_code,
+                          stderr.value_or("")));
         } else if constexpr (std::same_as<T, UnhandledSignal>) {
-          return runtime::Result<void, std::string>::error(std::format(
-              "Exited with signal {}\nstderr: {}", v.signal, stderr));
+          return runtime::Result<void, std::string>::error(
+              std::format("Exited with signal {}\nstderr: {}", v.signal,
+                          stderr.value_or("")));
         }
         runtime::fatal("Unhandled type");
       },
@@ -142,11 +144,9 @@ Process::start(const bool capture_stdout) noexcept {
   return exit_reason;
 }
 
-[[nodiscard]] Process::ProcessOutput Process::capture_output() noexcept {
+[[nodiscard]] Process::ProcessOutput Process::process_output() noexcept {
   yabt::runtime::check(m_status == Status::RUNNING,
                        "Process is not in the running status");
-  yabt::runtime::check(m_stdout_read_pipe != -1,
-                       "Stdout is not being captured");
   ProcessOutput output;
 
   const auto read_stream = [](int fd, std::string &stream) {
@@ -170,8 +170,14 @@ Process::start(const bool capture_stdout) noexcept {
     }
   };
 
-  read_stream(m_stdout_read_pipe, output.stdout);
-  read_stream(m_stderr_read_pipe, output.stderr);
+  if (m_stdout_read_pipe >= 0) {
+    output.stdout.emplace();
+    read_stream(m_stdout_read_pipe, output.stdout.value());
+  }
+  if (m_stderr_read_pipe >= 0) {
+    output.stderr.emplace();
+    read_stream(m_stderr_read_pipe, output.stderr.value());
+  }
   output.exit_reason = wait_completion();
 
   return output;
