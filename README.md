@@ -32,7 +32,7 @@ script produces the resulting `yabt` binary in the root of this repository after
 
 The bootstrap process follows 3 stages:
 - Stage 0: builds `Yabt` using the root `makefile`. The output will be under `./build/yabt`
-- stage 1: builds `Yabt` using the `yabt` tool generated in Stage 0. The output is generated under `BUILD_STAGE1`.
+- Stage 1: builds `Yabt` using the `yabt` tool generated in Stage 0. The output is generated under `BUILD_STAGE1`.
 - Stage 2: verifies the output of Stage 1 by building `yabt` using the output of Stage 1. 
 The output is generated under `BUILD_STAGE2`.
 
