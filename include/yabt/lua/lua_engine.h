@@ -33,7 +33,7 @@ public:
 
   [[nodiscard]] runtime::Result<void, std::string>
   register_module(const std::string &name, const std::filesystem::path &path,
-                  std::span<const std::string> build_files) noexcept;
+                  std::span<const std::string> target_specs) noexcept;
 
   [[nodiscard]] runtime::Result<void, std::string>
   exec_file(std::string_view file_path) noexcept;

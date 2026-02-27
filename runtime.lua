@@ -63,15 +63,15 @@ local yabt_native = require 'yabt_native'
 local utils = require 'yabt.core.utils'
 local in_progress_builds = {}
 local build_failed = false
-run_sandbox_for_mod = function(build_spec)
-    local modname = get_module_name(build_spec)
+run_sandbox_for_mod = function(target_spec_path)
+    local modname = get_module_name(target_spec_path)
     local mod = modules[modname]
     if mod == nil then
         error('Requested unknown module ' .. modname)
     end
 
-    if utils.table_contains(in_progress_builds, build_spec) then
-        local cycle = table.concat(in_progress_builds, ' -> ') .. ' -> ' .. build_spec
+    if utils.table_contains(in_progress_builds, target_spec_path) then
+        local cycle = table.concat(in_progress_builds, ' -> ') .. ' -> ' .. target_spec_path
         error('Detected circular import cycle: ' .. cycle)
     end
 
@@ -79,21 +79,19 @@ run_sandbox_for_mod = function(build_spec)
         -- TODO: Force this to only be able to ADD to it
         targets = {},
     }
-    append_path_methods(sandbox, mod.relative_path .. '/src/' .. build_spec .. '/')
+    append_path_methods(sandbox, mod.relative_path .. '/src/' .. target_spec_path .. '/')
     setmetatable(sandbox, sandbox_metatable)
 
-    local file_path = modules[modname].path .. '/src/' .. build_spec .. '/BUILD.lua'
+    local file_path = modules[modname].path .. '/src/' .. target_spec_path .. '/BUILD.lua'
 
     local f = assert(loadfile(file_path))
     setfenv(f, sandbox)
 
     local saved_module_path = MODULE_PATH
     MODULE_PATH = mod.relative_path
-    table.insert(in_progress_builds, build_spec)
+    table.insert(in_progress_builds, target_spec_path)
     local ok, err = pcall(f)
     if not ok then
-
-        -- FIXME: Use logging system here
         yabt_native.log_error('Error running file ' .. file_path .. ': ' .. err)
         build_failed = true
     end

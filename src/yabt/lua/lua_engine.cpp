@@ -274,7 +274,7 @@ void LuaEngine::add_build_step_with_rule() noexcept {
 [[nodiscard]] runtime::Result<void, std::string>
 LuaEngine::register_module(const std::string &name,
                            const std::filesystem::path &path,
-                           std::span<const std::string> build_files) noexcept {
+                           std::span<const std::string> target_specs) noexcept {
   runtime::check(lua_checkstack(m_state, 4), "Exceeded maximum Lua stack size");
 
   lua_getglobal(m_state, "modules");
@@ -293,8 +293,8 @@ LuaEngine::register_module(const std::string &name,
 
   // build files
   lua_newtable(m_state);
-  for (size_t i = 0; i < build_files.size(); i++) {
-    lua_pushstring(m_state, build_files[i].c_str());
+  for (size_t i = 0; i < target_specs.size(); i++) {
+    lua_pushstring(m_state, target_specs[i].c_str());
     lua_rawseti(m_state, -2, i + 1);
   }
   lua_setfield(m_state, -2, "build_files");

@@ -61,7 +61,7 @@ runtime::Result<lua::LuaEngine, std::string> prepare_lua_engine(
     log::IndentGuard guard{};
 
     std::filesystem::path mod_dir = mod->disk_path();
-    std::vector<std::string> build_files;
+    std::vector<std::string> target_specs;
 
     const std::filesystem::path src_dir = mod_dir / module::SRC_DIR_NAME;
     if (!std::filesystem::exists(src_dir)) {
@@ -76,13 +76,13 @@ runtime::Result<lua::LuaEngine, std::string> prepare_lua_engine(
         const std::filesystem::path build_file =
             std::filesystem::relative(entry.path().parent_path(), src_dir);
         yabt_debug("Found build file: {}", build_file.native());
-        build_files.push_back(build_file);
+        target_specs.push_back(build_file);
       }
     }
 
     // Register modules
     RESULT_PROPAGATE_DISCARD(
-        engine.register_module(mod->name(), mod_dir, build_files));
+        engine.register_module(mod->name(), mod_dir, target_specs));
   }
 
   // FIXME: hardcoding the path here will not work out of this repo. Embed the
