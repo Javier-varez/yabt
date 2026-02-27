@@ -1,6 +1,6 @@
-local cc = require 'yabt.cc.cc'
+local cc = require 'yabt_cc_rules.cc'
 
-local pkg_config = require 'yabt.pkg-config.pkg-config'
+local pkg_config = require 'yabt_cc_rules.pkg-config'
 local cxxflags = pkg_config.get_compile_flags('luajit')
 local ldflags = pkg_config.get_link_flags('luajit')
 

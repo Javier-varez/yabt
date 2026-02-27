@@ -22,6 +22,7 @@ make -j
 echo 'stage0 completed'
 
 echo 'Building stage1'
+./build/yabt sync
 ./build/yabt -v build --build-dir=BUILD_STAGE1
 echo 'stage1 completed'
 

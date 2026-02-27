@@ -135,7 +135,7 @@ Definition of a specific output of the build process. Typically defines the outp
 by yabt, as well as the inputs it will use to generate it. For a static C++ library, this looks like:
 
 ```lua
-local cc = require 'yabt.cc.cc'
+local cc = require 'yabt_cc_rules.cc'
 
 local utils = import 'project/utils' -- Imports file `src/project/utils/BUILD.lua` of the dependency named `project`
 
