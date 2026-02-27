@@ -18,6 +18,11 @@ namespace yabt::lua {
 
 class LuaEngine {
 public:
+  struct PreloadedPackage final {
+    const char *path;
+    const char *lua_source;
+  };
+
   [[nodiscard]] static yabt::runtime::Result<LuaEngine, std::string>
   construct(const std::filesystem::path &workspace_root,
             const std::filesystem::path &build_dir) noexcept;
@@ -30,6 +35,9 @@ public:
   ~LuaEngine() noexcept;
 
   void set_path(std::span<const std::string> paths) noexcept;
+
+  void
+  set_preloaded_lua_packages(std::vector<PreloadedPackage> packages) noexcept;
 
   [[nodiscard]] runtime::Result<void, std::string>
   register_module(const std::string &name, const std::filesystem::path &path,

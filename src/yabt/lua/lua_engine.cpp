@@ -44,6 +44,8 @@ int l_add_build_step_with_rule(lua_State *const L) {
   return 0;
 }
 
+namespace {
+
 template <log::LogLevel level> int l_log(lua_State *const L) {
   if (lua_gettop(L) != 1) {
     lua_pop(L, lua_gettop(L));
@@ -71,8 +73,6 @@ template <log::LogLevel level> int l_log(lua_State *const L) {
   lua_pop(L, 1);
   return 0;
 }
-
-namespace {
 
 static const luaL_Reg yabt_methods[]{
     {"add_build_step", l_add_build_step},
@@ -106,6 +106,45 @@ void init_modules_global(lua_State *const L) noexcept {
   lua_setglobal(L, "modules");
 }
 
+struct PreloadUserdata final {
+  const char *path;
+  const char *lua_source;
+};
+
+constexpr static const char *const YABT_PRELOAD_PACKAGES_KEY =
+    "yabt.preload.packages";
+
+int l_do_yabt_preload(lua_State *const L) noexcept {
+  yabt_verbose("Recieved call to l_do_yabt_preload");
+
+  PreloadUserdata *const userdata = static_cast<PreloadUserdata *>(
+      luaL_checkudata(L, 1, YABT_PRELOAD_PACKAGES_KEY));
+  runtime::check(userdata != nullptr,
+                 "Somehow we managed to call l_do_yabt_preload without a "
+                 "valid metatable");
+
+  yabt_verbose("Loading file: {}", userdata->path);
+  if (luaL_loadstring(L, userdata->lua_source)) {
+    lua_pushstring(
+        L, std::format("Unable to load file: {}", userdata->path).c_str());
+    lua_error(L);
+  }
+  lua_call(L, 0, LUA_MULTRET);
+  yabt_verbose("Loaded file");
+  // FIXME This might be returning the userdata...
+  return lua_gettop(L);
+}
+
+const std::array<luaL_Reg, 2> preload_metatable{
+    luaL_Reg{"__call", l_do_yabt_preload},
+    luaL_Reg{nullptr, nullptr},
+};
+
+void init_preload_obj_metatable(lua_State *const L) noexcept {
+  luaL_newmetatable(L, YABT_PRELOAD_PACKAGES_KEY);
+  luaL_openlib(L, nullptr, preload_metatable.data(), 0);
+}
+
 } // namespace
 
 [[nodiscard]] yabt::runtime::Result<LuaEngine, std::string>
@@ -128,6 +167,7 @@ LuaEngine::construct(const std::filesystem::path &workspace_root,
   set_package_cpath(engine.m_state, "");
 
   init_modules_global(engine.m_state);
+  init_preload_obj_metatable(engine.m_state);
 
   return runtime::Result<LuaEngine, std::string>::ok(std::move(engine));
 }
@@ -168,6 +208,22 @@ LuaEngine::exec_file(std::string_view file_path) noexcept {
   }
 
   return runtime::Result<void, std::string>::ok();
+}
+
+void LuaEngine::set_preloaded_lua_packages(
+    std::vector<PreloadedPackage> packages) noexcept {
+  lua_checkstack(m_state, 3);
+  lua_getfield(m_state, LUA_REGISTRYINDEX, "LUA_PRELOAD_TABLE");
+
+  for (PreloadedPackage &package : packages) {
+    void *const ud = lua_newuserdata(m_state, sizeof(PreloadUserdata));
+    new (ud)
+        PreloadUserdata{.path = package.path, .lua_source = package.lua_source};
+    luaL_getmetatable(m_state, YABT_PRELOAD_PACKAGES_KEY);
+    lua_setmetatable(m_state, -2);
+
+    lua_setfield(m_state, -2, package.path);
+  }
 }
 
 void LuaEngine::set_path(std::span<const std::string> paths) noexcept {
