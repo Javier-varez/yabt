@@ -1,4 +1,5 @@
 #include "yabt/build/build.h"
+#include "yabt/embed/embed.h"
 #include "yabt/log/log.h"
 
 namespace yabt::build {
@@ -22,6 +23,9 @@ runtime::Result<lua::LuaEngine, std::string> prepare_lua_engine(
 
   yabt_debug("Setting package.path");
   engine.set_path(paths);
+  yabt_debug("Configuring preloads");
+  engine.set_preloaded_lua_packages(embed::get_embedded_lua_rules());
+  yabt_debug("Configured preloads");
 
   return runtime::Result<lua::LuaEngine, std::string>::ok(std::move(engine));
 }
@@ -49,7 +53,7 @@ runtime::Result<lua::LuaEngine, std::string> prepare_lua_engine(
     }
   }
 
-  return engine.exec_file("./runtime.lua");
+  return runtime::Result<void, std::string>::ok();
 }
 
 [[nodiscard]] runtime::Result<void, std::string> invoke_build_targets(
@@ -85,9 +89,7 @@ runtime::Result<lua::LuaEngine, std::string> prepare_lua_engine(
         engine.register_module(mod->name(), mod_dir, target_specs));
   }
 
-  // FIXME: hardcoding the path here will not work out of this repo. Embed the
-  // file in the binary.
-  return engine.exec_file("./runtime.lua");
+  return engine.exec_string(embed::get_runtime_file());
 }
 
 } // namespace yabt::build

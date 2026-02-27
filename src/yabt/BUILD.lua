@@ -22,7 +22,8 @@ targets.Lib = cc.Library:new {
         'ninja/ninja.cpp',
         'process/process.cpp',
         'utils/string.cpp',
-        'workspace/utils.cpp'
+        'workspace/utils.cpp',
+        'embed/embed.cpp'
     ),
     cxxflags = cxxflags,
 }

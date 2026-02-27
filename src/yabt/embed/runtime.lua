@@ -1,3 +1,4 @@
+-- runtime.lua
 local targets_per_path = {}
 
 local function get_module_name(path)
@@ -7,7 +8,6 @@ end
 local run_sandbox_for_mod
 
 local function import(path)
-    local modname = get_module_name(path)
     if targets_per_path[path] == nil then
         run_sandbox_for_mod(path)
         return targets_per_path[path]
@@ -69,11 +69,10 @@ local function create_targets_table()
 
     function targets_metatable.__newindex(_, k, v)
         if targets_metatable[k] ~= nil then
-            error('Target '.. k.. ' already exists in this BUILD.lua')
+            error('Target ' .. k .. ' already exists in this BUILD.lua')
         end
         targets_metatable[k] = v
     end
-
 
     ---@type TargetsTable
     local targets = {

@@ -32,16 +32,21 @@ LuaEngine *get_engine(lua_State *const L) {
 
 } // namespace
 
-int l_add_build_step(lua_State *const L) {
+int l_add_build_step(lua_State *const L) noexcept {
   LuaEngine *const engine = get_engine(L);
   engine->add_build_step();
   return 0;
 }
 
-int l_add_build_step_with_rule(lua_State *const L) {
+int l_add_build_step_with_rule(lua_State *const L) noexcept {
   LuaEngine *const engine = get_engine(L);
   engine->add_build_step_with_rule();
   return 0;
+}
+
+int l_do_yabt_preload(lua_State *const L) noexcept {
+  LuaEngine *const engine = get_engine(L);
+  return engine->do_yabt_preload();
 }
 
 namespace {
@@ -106,45 +111,6 @@ void init_modules_global(lua_State *const L) noexcept {
   lua_setglobal(L, "modules");
 }
 
-struct PreloadUserdata final {
-  const char *path;
-  const char *lua_source;
-};
-
-constexpr static const char *const YABT_PRELOAD_PACKAGES_KEY =
-    "yabt.preload.packages";
-
-int l_do_yabt_preload(lua_State *const L) noexcept {
-  yabt_verbose("Recieved call to l_do_yabt_preload");
-
-  PreloadUserdata *const userdata = static_cast<PreloadUserdata *>(
-      luaL_checkudata(L, 1, YABT_PRELOAD_PACKAGES_KEY));
-  runtime::check(userdata != nullptr,
-                 "Somehow we managed to call l_do_yabt_preload without a "
-                 "valid metatable");
-
-  yabt_verbose("Loading file: {}", userdata->path);
-  if (luaL_loadstring(L, userdata->lua_source)) {
-    lua_pushstring(
-        L, std::format("Unable to load file: {}", userdata->path).c_str());
-    lua_error(L);
-  }
-  lua_call(L, 0, LUA_MULTRET);
-  yabt_verbose("Loaded file");
-  // FIXME This might be returning the userdata...
-  return lua_gettop(L);
-}
-
-const std::array<luaL_Reg, 2> preload_metatable{
-    luaL_Reg{"__call", l_do_yabt_preload},
-    luaL_Reg{nullptr, nullptr},
-};
-
-void init_preload_obj_metatable(lua_State *const L) noexcept {
-  luaL_newmetatable(L, YABT_PRELOAD_PACKAGES_KEY);
-  luaL_openlib(L, nullptr, preload_metatable.data(), 0);
-}
-
 } // namespace
 
 [[nodiscard]] yabt::runtime::Result<LuaEngine, std::string>
@@ -167,13 +133,17 @@ LuaEngine::construct(const std::filesystem::path &workspace_root,
   set_package_cpath(engine.m_state, "");
 
   init_modules_global(engine.m_state);
-  init_preload_obj_metatable(engine.m_state);
 
   return runtime::Result<LuaEngine, std::string>::ok(std::move(engine));
 }
 
 LuaEngine::LuaEngine(LuaEngine &&other) noexcept {
   m_state = other.m_state;
+  m_workspace_root = std::move(other.m_workspace_root);
+  m_preloaded_packages = std::move(other.m_preloaded_packages);
+  m_build_steps = std::move(other.m_build_steps);
+  m_build_steps_with_rule = std::move(other.m_build_steps_with_rule);
+  m_build_rules = std::move(other.m_build_rules);
   other.m_state = nullptr;
   // The object is moved, so we need to update our reference in the lua runtime
   init_registry(m_state, this);
@@ -184,6 +154,11 @@ LuaEngine &LuaEngine::operator=(LuaEngine &&other) noexcept {
     if (m_state)
       lua_close(m_state);
     m_state = other.m_state;
+    m_workspace_root = std::move(other.m_workspace_root);
+    m_preloaded_packages = std::move(other.m_preloaded_packages);
+    m_build_steps = std::move(other.m_build_steps);
+    m_build_steps_with_rule = std::move(other.m_build_steps_with_rule);
+    m_build_rules = std::move(other.m_build_rules);
     other.m_state = nullptr;
     // The object is moved, so we need to update our reference in the lua
     // runtime
@@ -199,6 +174,18 @@ LuaEngine::~LuaEngine() noexcept {
 }
 
 runtime::Result<void, std::string>
+LuaEngine::exec_string(const char *string) noexcept {
+  const int result = luaL_dostring(m_state, string);
+  if (result != 0 /* LUA_OK */) {
+    const char *str = luaL_checklstring(m_state, 1, nullptr);
+    return runtime::Result<void, std::string>::error(
+        std::format("failed to run file: {}", str));
+  }
+
+  return runtime::Result<void, std::string>::ok();
+}
+
+runtime::Result<void, std::string>
 LuaEngine::exec_file(std::string_view file_path) noexcept {
   const int result = luaL_dofile(m_state, std::string{file_path}.c_str());
   if (result != 0 /* LUA_OK */) {
@@ -211,19 +198,18 @@ LuaEngine::exec_file(std::string_view file_path) noexcept {
 }
 
 void LuaEngine::set_preloaded_lua_packages(
-    std::vector<PreloadedPackage> packages) noexcept {
-  lua_checkstack(m_state, 3);
-  lua_getfield(m_state, LUA_REGISTRYINDEX, "LUA_PRELOAD_TABLE");
+    std::map<std::string, const char *> packages) noexcept {
+  m_preloaded_packages = std::move(packages);
 
-  for (PreloadedPackage &package : packages) {
-    void *const ud = lua_newuserdata(m_state, sizeof(PreloadUserdata));
-    new (ud)
-        PreloadUserdata{.path = package.path, .lua_source = package.lua_source};
-    luaL_getmetatable(m_state, YABT_PRELOAD_PACKAGES_KEY);
-    lua_setmetatable(m_state, -2);
+  lua_checkstack(m_state, 4);
+  lua_getglobal(m_state, "package");
+  lua_getfield(m_state, -1, "preload");
 
-    lua_setfield(m_state, -2, package.path);
+  for (const auto &[path, _] : m_preloaded_packages) {
+    lua_pushcfunction(m_state, l_do_yabt_preload);
+    lua_setfield(m_state, -2, path.c_str());
   }
+  lua_pop(m_state, 2);
 }
 
 void LuaEngine::set_path(std::span<const std::string> paths) noexcept {
@@ -253,8 +239,8 @@ runtime::Result<void, std::string> LuaEngine::add_build_step_impl() noexcept {
     return runtime::Result<void, std::string>::error(
         "Attempted to register build_steps_with_rule without an out");
   }
-  yabt_debug("Registered build step for: {} with cmd: {}", step.outs[0],
-             step.cmd);
+  yabt_verbose("Registered build step for: {} with cmd: {}", step.outs[0],
+               step.cmd);
 
   lua_pop(m_state, 1);
   return runtime::Result<void, std::string>::ok();
@@ -287,7 +273,7 @@ LuaEngine::add_build_step_with_rule_impl() noexcept {
       RESULT_PROPAGATE(parse_lua_object<ninja::BuildRule>(m_state));
   if (m_build_rules.find(rule.name) == m_build_rules.cend()) {
     m_build_rules.insert(std::pair{rule.name, rule});
-    yabt_debug("Registered build rule: {}", rule.name);
+    yabt_verbose("Registered build rule: {}", rule.name);
   }
 
   lua_pop(m_state, 1);
@@ -300,8 +286,8 @@ LuaEngine::add_build_step_with_rule_impl() noexcept {
   }
 
   m_build_steps_with_rule.push_back(step);
-  yabt_debug("Registered build step for: {} with rule: {}", step.outs[0],
-             step.rule_name);
+  yabt_verbose("Registered build step for: {} with rule: {}", step.outs[0],
+               step.rule_name);
 
   lua_pop(m_state, 1);
 
@@ -321,6 +307,27 @@ void LuaEngine::add_build_step_with_rule() noexcept {
   // This call does longjmp, which breaks destructors of data types, since they
   // do not get executed. That's why the data above is in a different block
   lua_error(m_state);
+}
+
+int LuaEngine::do_yabt_preload() noexcept {
+  const char *req = lua_tostring(m_state, 1);
+  yabt_verbose("do_yabt_preload: Loading file: {}", req);
+
+  if (!m_preloaded_packages.contains(req)) {
+    yabt_warn("do_yabt_preload: {} Not found", req);
+    return 0;
+  }
+  const std::string &lua_src = m_preloaded_packages[req];
+  lua_pop(m_state, 1);
+
+  if (luaL_loadstring(m_state, lua_src.c_str())) {
+    lua_pushstring(m_state,
+                   std::format("Unable to load file: {}", req).c_str());
+    lua_error(m_state);
+  }
+  lua_call(m_state, 0, LUA_MULTRET);
+  const int retvals = lua_gettop(m_state);
+  return retvals;
 }
 
 [[nodiscard]] runtime::Result<void, std::string>
