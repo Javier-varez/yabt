@@ -1,5 +1,8 @@
 #pragma once
 
+#include <filesystem>
+#include <optional>
+
 #include "yabt/cli/cli_parser.h"
 #include "yabt/cli/subcommand.h"
 
@@ -17,6 +20,7 @@ public:
 
 private:
   int m_threads{0};
+  std::optional<std::filesystem::path> m_build_dir{};
 };
 
 } // namespace yabt::cmd

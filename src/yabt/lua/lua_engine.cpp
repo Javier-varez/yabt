@@ -57,7 +57,8 @@ static const luaL_Reg yabt_methods[]{
 };
 
 void luaopen_yabt(lua_State *const L,
-                  const std::filesystem::path &workspace_root) noexcept {
+                  const std::filesystem::path &workspace_root,
+                  const std::filesystem::path &build_dir) noexcept {
   luaL_register(L, "yabt_native", yabt_methods);
   lua_pop(L, 1);
 
@@ -66,8 +67,7 @@ void luaopen_yabt(lua_State *const L,
   lua_pushstring(L, workspace_root.c_str());
   lua_setglobal(L, "SOURCE_DIR");
 
-  const std::filesystem::path output_dir = workspace_root / "BUILD";
-  lua_pushstring(L, output_dir.c_str());
+  lua_pushstring(L, build_dir.c_str());
   lua_setglobal(L, "OUTPUT_DIR");
 }
 
@@ -80,7 +80,8 @@ void init_modules_global(lua_State *const L) noexcept {
 } // namespace
 
 [[nodiscard]] yabt::runtime::Result<LuaEngine, std::string>
-LuaEngine::construct(const std::filesystem::path &workspace_root) noexcept {
+LuaEngine::construct(const std::filesystem::path &workspace_root,
+                     const std::filesystem::path &build_dir) noexcept {
   LuaEngine engine;
 
   engine.m_state = luaL_newstate();
@@ -91,7 +92,7 @@ LuaEngine::construct(const std::filesystem::path &workspace_root) noexcept {
   }
 
   luaL_openlibs(engine.m_state);
-  luaopen_yabt(engine.m_state, workspace_root);
+  luaopen_yabt(engine.m_state, workspace_root, build_dir);
 
   init_registry(engine.m_state, &engine);
   set_package_path(engine.m_state, "");

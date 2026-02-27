@@ -19,7 +19,8 @@ namespace yabt::lua {
 class LuaEngine {
 public:
   [[nodiscard]] static yabt::runtime::Result<LuaEngine, std::string>
-  construct(const std::filesystem::path &workspace_root) noexcept;
+  construct(const std::filesystem::path &workspace_root,
+            const std::filesystem::path &build_dir) noexcept;
 
   LuaEngine(const LuaEngine &) noexcept = delete;
   LuaEngine(LuaEngine &&) noexcept;

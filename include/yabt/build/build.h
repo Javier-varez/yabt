@@ -14,6 +14,7 @@ constexpr static std::string_view INIT_FILE_NAME = "INIT.lua";
 
 [[nodiscard]] runtime::Result<lua::LuaEngine, std::string>
 prepare_lua_engine(const std::filesystem::path &ws_root,
+                   const std::filesystem::path &build_dir,
                    std::span<const std::unique_ptr<module::Module>>) noexcept;
 
 [[nodiscard]] runtime::Result<void, std::string> invoke_rule_initializers(

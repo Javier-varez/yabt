@@ -5,8 +5,10 @@ namespace yabt::build {
 
 runtime::Result<lua::LuaEngine, std::string> prepare_lua_engine(
     const std::filesystem::path &ws_root,
+    const std::filesystem::path &build_dir,
     std::span<const std::unique_ptr<module::Module>> modules) noexcept {
-  lua::LuaEngine engine = RESULT_PROPAGATE(lua::LuaEngine::construct(ws_root));
+  lua::LuaEngine engine =
+      RESULT_PROPAGATE(lua::LuaEngine::construct(ws_root, build_dir));
 
   std::vector<std::string> paths;
   for (const auto &mod : modules) {
