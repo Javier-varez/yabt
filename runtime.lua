@@ -9,7 +9,6 @@ local run_sandbox_for_mod = nil
 local function import(path)
     local modname = get_module_name(path)
     if targets_per_path[path] == nil then
-        -- FIXME: Protect against circular imports
         run_sandbox_for_mod(path)
         return targets_per_path[path]
     end
@@ -62,6 +61,7 @@ end
 
 local utils = require 'yabt.core.utils'
 local in_progress_builds = {}
+local build_failed = false
 run_sandbox_for_mod = function(build_spec)
     local modname = get_module_name(build_spec)
     local mod = modules[modname]
@@ -91,8 +91,9 @@ run_sandbox_for_mod = function(build_spec)
     table.insert(in_progress_builds, build_spec)
     local ok, err = pcall(f)
     if not ok then
-        -- FIXME: Raise the error after all files are processed
-        print('Error running file: ' .. err)
+        -- FIXME: Use logging system here
+        print('Error running file ' .. file_path .. ': ' .. err)
+        build_failed = true
     end
     table.remove(in_progress_builds, #in_progress_builds)
     MODULE_PATH = saved_module_path
@@ -104,6 +105,10 @@ for _, mod in pairs(modules) do
     for _, file in ipairs(mod.build_files) do
         run_sandbox_for_mod(file)
     end
+end
+
+if build_failed then
+    error('Failed to process some build specs')
 end
 
 local ctx = require 'yabt.core.context'
