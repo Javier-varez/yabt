@@ -64,10 +64,10 @@ void luaopen_yabt(lua_State *const L,
 
   runtime::check(lua_checkstack(L, 2), "Exceeded maximum Lua stack size");
 
-  lua_pushstring(L, workspace_root.c_str());
+  lua_pushstring(L, std::filesystem::absolute(workspace_root).c_str());
   lua_setglobal(L, "SOURCE_DIR");
 
-  lua_pushstring(L, build_dir.c_str());
+  lua_pushstring(L, std::filesystem::absolute(build_dir).c_str());
   lua_setglobal(L, "OUTPUT_DIR");
 }
 

@@ -31,8 +31,8 @@ build_inner(const int threads,
                     module::MODULE_FILE_NAME));
   }
 
-  const std::filesystem::path build_dir =
-      req_build_dir.value_or(ws_root.value() / workspace::BUILD_DIR_NAME);
+  const std::filesystem::path build_dir = std::filesystem::absolute(
+      req_build_dir.value_or(ws_root.value() / workspace::BUILD_DIR_NAME));
 
   auto modules = RESULT_PROPAGATE(workspace::open_workspace(ws_root.value()));
   auto lua_engine = RESULT_PROPAGATE(
