@@ -64,7 +64,7 @@ run_sandbox_for_mod = function(build_spec)
     local modname = get_module_name(build_spec)
     local mod = modules[modname]
     if mod == nil then
-        error('Requested unknown module ' .. mod)
+        error('Requested unknown module ' .. modname)
     end
 
     local sandbox = {
