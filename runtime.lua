@@ -59,6 +59,40 @@ local function append_path_methods(t, relpath)
     end
 end
 
+---@class TargetsTable
+
+local function create_targets_table()
+    local targets_metatable = {
+    }
+    function targets_metatable.__index(_, k)
+        return targets_metatable[k]
+    end
+
+    function targets_metatable.__newindex(_, k, v)
+        if targets_metatable[k] ~= nil then
+            error('Target '.. k.. ' already exists in this BUILD.lua')
+        end
+        targets_metatable[k] = v
+    end
+
+
+    ---@type TargetsTable
+    local targets = {
+        unwrap = function(self)
+            local self_meta = getmetatable(self)
+            local new = {}
+            for k, v in pairs(self_meta) do
+                if not string.match(k, '__.*') then
+                    new[k] = v
+                end
+            end
+            return new
+        end
+    }
+    setmetatable(targets, targets_metatable)
+    return targets
+end
+
 local yabt_native = require 'yabt_native'
 local utils = require 'yabt.core.utils'
 local in_progress_builds = {}
@@ -76,8 +110,7 @@ run_sandbox_for_mod = function(target_spec_path)
     end
 
     local sandbox = {
-        -- TODO: Force this to only be able to ADD to it
-        targets = {},
+        targets = create_targets_table(),
     }
     append_path_methods(sandbox, mod.relative_path .. '/src/' .. target_spec_path .. '/')
     setmetatable(sandbox, sandbox_metatable)
@@ -98,7 +131,7 @@ run_sandbox_for_mod = function(target_spec_path)
     table.remove(in_progress_builds, #in_progress_builds)
     MODULE_PATH = saved_module_path
 
-    targets_per_path[build_spec] = sandbox.targets
+    targets_per_path[target_spec_path] = sandbox.targets:unwrap()
 end
 
 for _, mod in pairs(modules) do
