@@ -16,7 +16,6 @@ local function import(path)
 end
 
 local allowed_globals = {
-    print = print,
     require = require,
     import = import,
 }
@@ -147,6 +146,8 @@ end
 local ctx = require 'yabt.core.context'
 for _, targets in pairs(targets_per_path) do
     for _, target in pairs(targets) do
+        -- FIXME: This should only be called for those targets that are buildable
         target:build(ctx)
+        -- TODO: handle testable and runnable targets as well
     end
 end
