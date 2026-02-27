@@ -3,9 +3,10 @@
 # Bootstraping process for the Yabt build system. Yabt is self-hosted, but initially it needs to
 # be built from another build system. This script performs the following builds:
 #
-# - stage0: build yabt using the root `makefile`. The outupt will be under ./build/yabt
-# - stage1: build yabt using the yabt tool generated in stage0. The output is generated under BUILD
-# - stage2: verify the output of the previous step by building yabt using the output of stage1.
+# - stage0: builds `Yabt` using the root `makefile`. The output will be under `./build/yabt`
+# - stage1: builds `Yabt` using the `yabt` tool generated in stage0. The output is generated under `BUILD_STAGE1`.
+# - stage2: verifies the output of the previous step by building `yabt` using the output of stage1.
+# The output is generated under `BUILD_STAGE2`.
 #
 # The output of stage2 is our final binary
 
