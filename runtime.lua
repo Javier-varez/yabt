@@ -59,6 +59,7 @@ local function append_path_methods(t, relpath)
     end
 end
 
+local yabt_native = require 'yabt_native'
 local utils = require 'yabt.core.utils'
 local in_progress_builds = {}
 local build_failed = false
@@ -91,8 +92,9 @@ run_sandbox_for_mod = function(build_spec)
     table.insert(in_progress_builds, build_spec)
     local ok, err = pcall(f)
     if not ok then
+
         -- FIXME: Use logging system here
-        print('Error running file ' .. file_path .. ': ' .. err)
+        yabt_native.log_error('Error running file ' .. file_path .. ': ' .. err)
         build_failed = true
     end
     table.remove(in_progress_builds, #in_progress_builds)

@@ -48,11 +48,44 @@ int l_add_build_step_with_rule(lua_State *const L) {
   return 0;
 }
 
+template <log::LogLevel level> int l_log(lua_State *const L) {
+  if (lua_gettop(L) != 1) {
+    lua_pop(L, lua_gettop(L));
+    lua_pushstring(L, "Unexpected number of arguments given to log function");
+    lua_error(L);
+  }
+  if (!lua_isstring(L, -1)) {
+    lua_pop(L, lua_gettop(L));
+    lua_pushstring(L, "Invalid argument type given to log function");
+    lua_error(L);
+  }
+
+  const char *str = lua_tostring(L, -1);
+  if constexpr (level == log::LogLevel::VERBOSE) {
+    yabt_verbose("{}", str);
+  } else if constexpr (level == log::LogLevel::DEBUG) {
+    yabt_debug("{}", str);
+  } else if constexpr (level == log::LogLevel::INFO) {
+    yabt_info("{}", str);
+  } else if constexpr (level == log::LogLevel::WARNING) {
+    yabt_warn("{}", str);
+  } else if constexpr (level == log::LogLevel::ERROR) {
+    yabt_error("{}", str);
+  }
+  lua_pop(L, 1);
+  return 0;
+}
+
 namespace {
 
 static const luaL_Reg yabt_methods[]{
     {"add_build_step", l_add_build_step},
     {"add_build_step_with_rule", l_add_build_step_with_rule},
+    {"log_verbose", l_log<log::LogLevel::VERBOSE>},
+    {"log_debug", l_log<log::LogLevel::DEBUG>},
+    {"log_info", l_log<log::LogLevel::INFO>},
+    {"log_warn", l_log<log::LogLevel::WARNING>},
+    {"log_error", l_log<log::LogLevel::ERROR>},
     {nullptr, nullptr},
 };
 
