@@ -60,11 +60,18 @@ local function append_path_methods(t, relpath)
     end
 end
 
+local utils = require 'yabt.core.utils'
+local in_progress_builds = {}
 run_sandbox_for_mod = function(build_spec)
     local modname = get_module_name(build_spec)
     local mod = modules[modname]
     if mod == nil then
         error('Requested unknown module ' .. modname)
+    end
+
+    if utils.table_contains(in_progress_builds, build_spec) then
+        local cycle = table.concat(in_progress_builds, ' -> ') .. ' -> ' .. build_spec
+        error('Detected circular import cycle: ' .. cycle)
     end
 
     local sandbox = {
@@ -81,11 +88,13 @@ run_sandbox_for_mod = function(build_spec)
 
     local saved_module_path = MODULE_PATH
     MODULE_PATH = mod.relative_path
+    table.insert(in_progress_builds, build_spec)
     local ok, err = pcall(f)
     if not ok then
         -- FIXME: Raise the error after all files are processed
         print('Error running file: ' .. err)
     end
+    table.remove(in_progress_builds, #in_progress_builds)
     MODULE_PATH = saved_module_path
 
     targets_per_path[build_spec] = sandbox.targets
