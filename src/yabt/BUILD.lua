@@ -1,11 +1,12 @@
 local cc = require 'yabt.cc.cc'
 
 local pkg_config = require 'yabt.pkg-config.pkg-config'
+local cxxflags = pkg_config.get_compile_flags('luajit')
+local ldflags = pkg_config.get_link_flags('luajit')
 
-targets.Bin = cc.Binary:new {
-    out = out('yabt'),
+targets.Lib = cc.Library:new {
+    out = out('yabt.a'),
     srcs = ins(
-        'main.cpp',
         'build/build.cpp',
         'cli/cli_parser.cpp',
         'cli/flag.cpp',
@@ -23,6 +24,17 @@ targets.Bin = cc.Binary:new {
         'utils/string.cpp',
         'workspace/utils.cpp'
     ),
-    cxxflags = pkg_config.get_compile_flags('luajit'),
-    ldflags_post = pkg_config.get_link_flags('luajit'),
+    cxxflags = cxxflags,
+}
+
+targets.Bin = cc.Binary:new {
+    out = out('yabt'),
+    srcs = ins(
+        'main.cpp'
+    ),
+    deps = {
+        targets.Lib,
+    },
+    cxxflags = cxxflags,
+    ldflags_post = ldflags,
 }
