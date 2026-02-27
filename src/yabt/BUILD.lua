@@ -12,6 +12,7 @@ targets.Bin = cc.Binary:new {
         'cmd/build.cpp',
         'cmd/help.cpp',
         'cmd/sync.cpp',
+        'cmd/clean.cpp',
         'log/log.cpp',
         'lua/lua_engine.cpp',
         'module/git_module.cpp',
