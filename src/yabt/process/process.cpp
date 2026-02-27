@@ -134,7 +134,7 @@ Process::start(const bool capture_stdout) noexcept {
     exit_reason = NormalExit{.exit_code = WEXITSTATUS(m_exit_code)};
   } else if (WIFSIGNALED(m_exit_code)) {
     exit_reason = UnhandledSignal{
-        .core_dumped = WCOREDUMP(m_exit_code),
+        .core_dumped = WCOREDUMP(m_exit_code) != 0,
         .signal = WTERMSIG(m_exit_code),
     };
   } else {

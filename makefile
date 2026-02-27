@@ -24,7 +24,7 @@ SRCS := src/yabt/main.cpp            \
 	src/yabt/ninja/ninja.cpp         \
 	src/yabt/build/build.cpp
 
-CFLAGS := -Wall -Wextra -Werror $(LUAJIT_INCS) -O2 -gdwarf-3 $(INCLUDE_DIRS:%=-I%)
+CFLAGS := -Wall -Wextra -Werror $(LUAJIT_INCS) -O2 -gdwarf-3 $(INCLUDE_DIRS:%=-I%) -Wno-gnu-string-literal-operator-template
 CXXFLAGS := $(CFLAGS) -std=c++20
 LDFLAGS := $(LUAJIT_LIBS)
 
