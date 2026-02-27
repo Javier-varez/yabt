@@ -7,14 +7,7 @@
 #include "yabt/runtime/result.h"
 #include "yabt/utils/constexpr_string.h"
 
-extern "C" {
-#include "lauxlib.h"
-#include "lua.h"
-}
-
-extern "C" {
-struct lua_State;
-}
+#include "lua.hpp"
 
 namespace yabt::lua {
 

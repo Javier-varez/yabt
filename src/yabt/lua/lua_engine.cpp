@@ -9,11 +9,7 @@
 #include "yabt/ninja/build_rule.h"
 #include "yabt/ninja/build_step.h"
 
-extern "C" {
-#include "lauxlib.h"
-#include "lua.h"
-#include "lualib.h"
-}
+#include "lua.hpp"
 
 namespace yabt::lua {
 
