@@ -16,7 +16,6 @@ public:
       std::span<const std::string_view> unparsed_args) noexcept final;
 
 private:
-  int m_threads{0};
 };
 
 } // namespace yabt::cmd
