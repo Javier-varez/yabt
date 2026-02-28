@@ -12,7 +12,7 @@ local Path = {}
 ---@return string # Absolute representation of the path
 ---@nodiscard
 function Path:absolute()
-    if SOURCE_DIR[#SOURCE_DIR] ~= '/' then
+    if SOURCE_DIR:sub(#SOURCE_DIR, #SOURCE_DIR) ~= '/' then
         -- TODO: this code would benefit from a native path representation in C++ using
         -- std::filesystem::path...
         return SOURCE_DIR .. '/' .. self._relative
@@ -97,7 +97,7 @@ end
 ---@return string # Absolute representation of the path
 ---@nodiscard
 function OutPath:absolute()
-    if OUTPUT_DIR[#OUTPUT_DIR] ~= '/' then
+    if OUTPUT_DIR:sub(#OUTPUT_DIR, #OUTPUT_DIR) ~= '/' then
         -- TODO: this code would benefit from a native path representation in C++ using
         -- std::filesystem::path...
         return OUTPUT_DIR .. '/' .. self._relative

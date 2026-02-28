@@ -12,6 +12,7 @@ namespace yabt::workspace {
 constexpr static std::string_view BUILD_DIR_NAME = "BUILD";
 constexpr static std::string_view NINJA_FILE_PATH = "build.ninja";
 constexpr static std::string_view DEPS_DIR_NAME = "DEPS";
+constexpr static std::string_view COMPDB_NAME = "compile_commands.json";
 
 enum class SyncMode {
   NORMAL,

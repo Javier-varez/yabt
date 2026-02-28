@@ -23,6 +23,7 @@ template <typename T> struct LuaArray final {};
 
 struct LuaString final {};
 struct LuaInteger final {};
+struct LuaBoolean final {};
 
 // Parsing spec type marker
 template <typename T> struct LuaParseSpec;
@@ -44,6 +45,10 @@ template <> struct LuaParseSpec<int> {
   using spec = LuaInteger;
 };
 
+template <> struct LuaParseSpec<bool> {
+  using spec = LuaBoolean;
+};
+
 template <typename T>
 [[nodiscard]] runtime::Result<std::vector<T>, std::string>
 parse_with_spec(lua_State *const L, LuaArray<T>) noexcept;
@@ -61,6 +66,9 @@ parse_with_spec(lua_State *const L, LuaString) noexcept;
 
 [[nodiscard]] runtime::Result<int, std::string>
 parse_with_spec(lua_State *const L, LuaInteger) noexcept;
+
+[[nodiscard]] runtime::Result<bool, std::string>
+parse_with_spec(lua_State *const L, LuaBoolean) noexcept;
 
 template <typename T>
 [[nodiscard]] runtime::Result<T, std::string>
@@ -194,6 +202,23 @@ parse_with_spec(lua_State *const L, LuaInteger) noexcept {
       static_cast<int>(lua_tointeger(L, -1)));
 }
 
+[[nodiscard]] inline runtime::Result<bool, std::string>
+parse_with_spec(lua_State *const L, LuaBoolean) noexcept {
+  if (lua_isnil(L, -1)) {
+    // Empty string
+    return runtime::Result<bool, std::string>::ok(false);
+  }
+
+  if (!lua_isboolean(L, -1)) {
+    return runtime::Result<bool, std::string>::error(
+        std::format("Deserializing bool, but found type {}",
+                    lua_typename(L, lua_type(L, -1))));
+  }
+
+  return runtime::Result<bool, std::string>::ok(
+      static_cast<bool>(lua_toboolean(L, -1)));
+}
+
 #define _REMOVE_PARENS_IMPL(...) __VA_ARGS__
 #define _REMOVE_PARENS(...) _REMOVE_PARENS_IMPL __VA_ARGS__
 
@@ -217,6 +242,9 @@ parse_with_spec(lua_State *const L, LuaInteger) noexcept {
 #define _APPLY_OP_VA_ARGS4(op, fixed_arg, first, ...)                          \
   _APPLY_OP_VA_ARGS1(op, fixed_arg, first)                                     \
   _APPLY_OP_VA_ARGS3(op, fixed_arg, __VA_ARGS__)
+#define _APPLY_OP_VA_ARGS5(op, fixed_arg, first, ...)                          \
+  _APPLY_OP_VA_ARGS1(op, fixed_arg, first)                                     \
+  _APPLY_OP_VA_ARGS4(op, fixed_arg, __VA_ARGS__)
 
 #define _APPLY_OP_VA_ARGS_IMPL(nargs, op, fixed_arg, ...)                      \
   _JOIN(_APPLY_OP_VA_ARGS, nargs)(op, fixed_arg, __VA_ARGS__)

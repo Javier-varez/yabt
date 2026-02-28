@@ -21,6 +21,7 @@ public:
 private:
   int m_threads{0};
   std::optional<std::filesystem::path> m_build_dir{};
+  bool m_compdb{false};
 };
 
 } // namespace yabt::cmd

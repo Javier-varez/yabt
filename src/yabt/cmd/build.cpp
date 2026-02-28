@@ -1,3 +1,4 @@
+#include <fstream>
 #include <regex>
 #include <span>
 #include <string>
@@ -21,7 +22,7 @@ const std::string_view LONG_DESCRIPTION =
     "is ... (TBD)";
 
 [[nodiscard]] runtime::Result<void, std::string>
-build_inner(const int threads,
+build_inner(const int threads, const bool compdb,
             const std::optional<std::filesystem::path> &req_build_dir,
             const std::span<const std::string_view> target_patterns) {
   const std::optional<std::filesystem::path> ws_root =
@@ -50,6 +51,29 @@ build_inner(const int threads,
       ninja_file, lua_engine.build_rules(), lua_engine.build_steps(),
       lua_engine.build_steps_with_rule()));
 
+  if (compdb) {
+    std::vector<std::string> compdb_rules;
+    for (const auto &[name, rule] : lua_engine.build_rules()) {
+      if (rule.compdb) {
+        compdb_rules.push_back(name);
+      }
+    }
+    process::Process ninja{"ninja", "-t", "compdb",
+                           std::span<const std::string>{compdb_rules}};
+    ninja.set_cwd((build_dir).native());
+    RESULT_PROPAGATE_DISCARD(ninja.start(true));
+    const process::Process::ProcessOutput output = ninja.process_output();
+    RESULT_PROPAGATE_DISCARD(output.to_result());
+
+    const std::filesystem::path compdb_path =
+        build_dir / workspace::COMPDB_NAME;
+
+    std::ofstream compdb_stream;
+    compdb_stream.open(compdb_path.native());
+    compdb_stream << output.stdout.value();
+    compdb_stream.close();
+  }
+
   // Find all matching targets for a pattern
   std::vector<std::regex> patterns;
   for (const std::string_view target_pattern : target_patterns) {
@@ -67,7 +91,8 @@ build_inner(const int threads,
   }
 
   if (targets.size() == 0) {
-    return runtime::Result<void, std::string>::error("No matched targets");
+    yabt_warn("No matched targets");
+    return runtime::Result<void, std::string>::ok();
   }
 
   const std::string threads_str = std::format("{}", threads);
@@ -98,7 +123,7 @@ BuildCommand::register_command(cli::CliParser &cli_parser) noexcept {
       }},
   }));
 
-  return subcommand.register_flag({
+  RESULT_PROPAGATE_DISCARD(subcommand.register_flag({
       .name{"build-dir"},
       .short_name{},
       .optional = true,
@@ -109,6 +134,18 @@ BuildCommand::register_command(cli::CliParser &cli_parser) noexcept {
         this->m_build_dir = arg.value;
         return runtime::Result<void, std::string>::ok();
       }},
+  }));
+
+  return subcommand.register_flag({
+      .name{"compdb"},
+      .short_name{},
+      .optional = true,
+      .type = yabt::cli::FlagType::BOOL,
+      .description{"Generates a compilation database in the build directory"},
+      .handler{[this](const cli::Arg &) {
+        this->m_compdb = true;
+        return runtime::Result<void, std::string>::ok();
+      }},
   });
 }
 
@@ -116,7 +153,7 @@ BuildCommand::register_command(cli::CliParser &cli_parser) noexcept {
 BuildCommand::handle_subcommand(
     std::span<const std::string_view> target_patterns) noexcept {
   if (runtime::Result result =
-          build_inner(m_threads, m_build_dir, target_patterns);
+          build_inner(m_threads, m_compdb, m_build_dir, target_patterns);
       result.is_error()) {
     yabt_error("Build failed: {}", result.error_value());
   }
