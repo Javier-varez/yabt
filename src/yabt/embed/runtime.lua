@@ -6,6 +6,10 @@ local function new_import_wrapper(import_name, import_table)
             if import_table[k] == nil then
                 error('Field ' .. k .. ' does not exist in import(\'' .. import_name .. '\')')
             end
+            local first_char = k:sub(1,1)
+            if first_char < 'A' or first_char > 'Z' then
+                error('Field ' .. k .. ' is private in import(\'' .. import_name .. '\')')
+            end
             return import_table[k]
         end,
         __newindex = function()

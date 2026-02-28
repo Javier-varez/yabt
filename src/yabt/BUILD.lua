@@ -4,7 +4,7 @@ local pkg_config = require 'yabt_cc_rules.pkg-config'
 local cxxflags = pkg_config.get_compile_flags('luajit')
 local ldflags = pkg_config.get_link_flags('luajit')
 
-targets.Lib = cc.Library:new {
+targets.lib = cc.Library:new {
     out = out('yabt.a'),
     srcs = ins(
         'build/build.cpp',
@@ -35,7 +35,7 @@ targets.Bin = cc.Binary:new {
         'main.cpp'
     ),
     deps = {
-        targets.Lib,
+        targets.lib,
     },
     cxxflags = cxxflags,
     ldflags_post = ldflags,

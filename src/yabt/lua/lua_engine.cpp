@@ -1,3 +1,4 @@
+#include <cstring>
 #include <format>
 #include <map>
 #include <string>
@@ -362,13 +363,19 @@ void LuaEngine::handle_target() noexcept {
     leafs.push_back(leaf);
   }
 
-  m_build_steps_with_rule.push_back({
-      .outs = std::vector{m_current_target},
-      .ins = leafs,
-      .rule_name = "phony",
-      .variables{},
-  });
-  m_all_targets.push_back(m_current_target);
+  // We only expose public targets (start with uppercase)
+  const bool public_target =
+      strlen(target_name) != 0 && std::isupper(target_name[0]);
+  if (public_target) {
+    m_build_steps_with_rule.push_back({
+        .outs = std::vector{m_current_target},
+        .ins = leafs,
+        .rule_name = "phony",
+        .variables{},
+    });
+    m_all_targets.push_back(m_current_target);
+  }
+
   m_current_target = "";
 
   lua_pop(m_state, 2);
