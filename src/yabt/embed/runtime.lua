@@ -1,4 +1,21 @@
 -- runtime.lua
+
+local function new_import_wrapper(import_name, import_table)
+    local metatable = {
+        __index = function(_, k)
+            if import_table[k] == nil then
+                error('Field ' .. k .. ' does not exist in import(\'' .. import_name .. '\')')
+            end
+            return import_table[k]
+        end,
+        __newindex = function()
+            error('Attempted to edit imported module: ' .. import_name)
+        end
+    }
+    setmetatable(metatable, metatable)
+    return metatable
+end
+
 local targets_per_target_spec_path = {}
 
 local function get_module_name(path)
@@ -10,9 +27,8 @@ local run_sandbox_for_mod
 local function import(path)
     if targets_per_target_spec_path[path] == nil then
         run_sandbox_for_mod(path)
-        return targets_per_target_spec_path[path]
     end
-    return targets_per_target_spec_path[path]
+    return new_import_wrapper(path, targets_per_target_spec_path[path])
 end
 
 local allowed_globals = {
