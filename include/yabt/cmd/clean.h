@@ -1,5 +1,7 @@
 #pragma once
 
+#include <filesystem>
+
 #include "yabt/cli/cli_parser.h"
 #include "yabt/cli/subcommand.h"
 
@@ -16,6 +18,8 @@ public:
       std::span<const std::string_view> unparsed_args) noexcept final;
 
 private:
+  bool m_deps;
+  std::optional<std::filesystem::path> m_build_dir{};
 };
 
 } // namespace yabt::cmd
