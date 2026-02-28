@@ -23,11 +23,11 @@ echo 'stage0 completed'
 
 echo 'Building stage1'
 ./build/yabt sync
-./build/yabt -v build --build-dir=BUILD_STAGE1
+./build/yabt build --build-dir=BUILD_STAGE1 //yabt/.*
 echo 'stage1 completed'
 
 echo 'Building stage2'
-./BUILD_STAGE1/src/yabt/yabt -v build --build-dir=BUILD_STAGE2
+./BUILD_STAGE1/src/yabt/yabt build --build-dir=BUILD_STAGE2 //yabt/.*
 echo 'stage2 completed'
 
 cp ./BUILD_STAGE2/src/yabt/yabt yabt
