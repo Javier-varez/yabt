@@ -159,21 +159,29 @@ for _, mod in pairs(modules) do
 end
 
 if build_failed then
-    error('Failed to process some build specs')
+    error('Errors during build process')
 end
 
 local function handle_target(target_spec_path, target_name, target)
     local ctx = require 'yabt.core.context'
-    ctx.handle_target(target_spec_path, target_name, function()
+    local ok, err = ctx.handle_target(target_spec_path, target_name, function()
         if target.build and type(target.build) == 'function' then
             target:build(ctx)
+            -- TODO: handle testable and runnable targets as well
         end
     end)
-    -- TODO: handle testable and runnable targets as well
+    if not ok then
+        yabt_native.log_error('Error executing build for //' .. target_spec_path .. '/' .. target_name .. ': ' .. err)
+        build_failed = true
+    end
 end
 
 for target_spec_path, targets in pairs(targets_per_target_spec_path) do
     for target_name, target in pairs(targets) do
         handle_target(target_spec_path, target_name, target)
     end
+end
+
+if build_failed then
+    error('Errors during build process')
 end

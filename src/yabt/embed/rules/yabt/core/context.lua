@@ -72,7 +72,7 @@ local M = {
     ---@param fn fun(): nil
     handle_target = function(target_spec_path, target_name, fn)
         local native = require 'yabt_native'
-        native.handle_target(target_spec_path, target_name, fn)
+        return native.handle_target(target_spec_path, target_name, fn)
     end
 }
 

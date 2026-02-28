@@ -71,7 +71,7 @@ private:
   [[nodiscard]] runtime::Result<void, std::string>
   add_build_step_with_rule_impl() noexcept;
 
-  void handle_target() noexcept;
+  [[nodiscard]] int handle_target() noexcept;
 
   [[nodiscard]] int do_yabt_preload() noexcept;
 

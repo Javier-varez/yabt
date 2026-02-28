@@ -15,6 +15,7 @@
 namespace yabt::lua {
 
 namespace {
+
 int registry_key;
 
 void init_registry(lua_State *const L, LuaEngine *data) {
@@ -47,8 +48,7 @@ int l_add_build_step_with_rule(lua_State *const L) noexcept {
 
 int l_handle_target(lua_State *const L) noexcept {
   LuaEngine *const engine = get_engine(L);
-  engine->handle_target();
-  return 0;
+  return engine->handle_target();
 }
 
 int l_do_yabt_preload(lua_State *const L) noexcept {
@@ -331,7 +331,7 @@ void LuaEngine::add_build_step_with_rule() noexcept {
   lua_error(m_state);
 }
 
-void LuaEngine::handle_target() noexcept {
+int LuaEngine::handle_target() noexcept {
   if (lua_gettop(m_state) != 3) {
     lua_pushstring(
         m_state,
@@ -356,7 +356,12 @@ void LuaEngine::handle_target() noexcept {
   m_current_target = std::format("//{}/{}", target_spec_path, target_name);
   m_leaf_paths = std::set<std::string>{};
 
-  lua_call(m_state, 0, 0);
+  if (lua_pcall(m_state, 0, 0, 0) != 0 /* LUA_OK */) {
+    lua_remove(m_state, 1);
+    lua_pushboolean(m_state, false);
+    lua_replace(m_state, -3);
+    return 2;
+  }
 
   std::vector<std::string> leafs{};
   for (const std::string &leaf : m_leaf_paths) {
@@ -379,6 +384,8 @@ void LuaEngine::handle_target() noexcept {
   m_current_target = "";
 
   lua_pop(m_state, 2);
+  lua_pushboolean(m_state, true);
+  return 1;
 }
 
 int LuaEngine::do_yabt_preload() noexcept {
