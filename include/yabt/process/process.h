@@ -17,8 +17,18 @@ template <typename... Args>
   std::vector<std::string> result;
   result.reserve(sizeof...(Args));
 
-  const auto process_one = [&result](const std::string_view s) {
-    result.push_back(std::string{s});
+  const auto process_one = [&result]<typename T>(const T s) {
+    if constexpr (std::same_as<T, std::string_view> ||
+                  std::same_as<T, std::string> ||
+                  std::same_as<T, const char *>) {
+      result.push_back(std::string{s});
+    } else if constexpr (std::same_as<T, std::span<const std::string>>) {
+      for (const std::string &i : s) {
+        result.push_back(i);
+      }
+    } else {
+      static_assert(false, "Unhandled data type");
+    }
   };
 
   (process_one(std::forward<Args>(args)), ...);
