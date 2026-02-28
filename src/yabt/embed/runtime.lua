@@ -1,5 +1,5 @@
 -- runtime.lua
-local targets_per_path = {}
+local targets_per_target_spec_path = {}
 
 local function get_module_name(path)
     return string.match(path, '^([^/]*).*')
@@ -8,11 +8,11 @@ end
 local run_sandbox_for_mod
 
 local function import(path)
-    if targets_per_path[path] == nil then
+    if targets_per_target_spec_path[path] == nil then
         run_sandbox_for_mod(path)
-        return targets_per_path[path]
+        return targets_per_target_spec_path[path]
     end
-    return targets_per_path[path]
+    return targets_per_target_spec_path[path]
 end
 
 local allowed_globals = {
@@ -129,7 +129,7 @@ run_sandbox_for_mod = function(target_spec_path)
     table.remove(in_progress_builds, #in_progress_builds)
     MODULE_PATH = saved_module_path
 
-    targets_per_path[target_spec_path] = sandbox.targets:unwrap()
+    targets_per_target_spec_path[target_spec_path] = sandbox.targets:unwrap()
 end
 
 for _, mod in pairs(modules) do
@@ -142,11 +142,18 @@ if build_failed then
     error('Failed to process some build specs')
 end
 
-local ctx = require 'yabt.core.context'
-for _, targets in pairs(targets_per_path) do
-    for _, target in pairs(targets) do
-        -- FIXME: This should only be called for those targets that are buildable
-        target:build(ctx)
-        -- TODO: handle testable and runnable targets as well
+local function handle_target(target_spec_path, target_name, target)
+    local ctx = require 'yabt.core.context'
+    ctx.handle_target(target_spec_path, target_name, function()
+        if target.build and type(target.build) == 'function' then
+            target:build(ctx)
+        end
+    end)
+    -- TODO: handle testable and runnable targets as well
+end
+
+for target_spec_path, targets in pairs(targets_per_target_spec_path) do
+    for target_name, target in pairs(targets) do
+        handle_target(target_spec_path, target_name, target)
     end
 end

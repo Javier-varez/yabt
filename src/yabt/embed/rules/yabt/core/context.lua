@@ -1,7 +1,7 @@
 ---@param unsanitized Path[]
 ---@return string[]
 local function validateInputPaths(unsanitized)
-    local path = require'yabt.core.path'
+    local path = require 'yabt.core.path'
 
     local ins = {}
     for _, input in ipairs(unsanitized) do
@@ -17,7 +17,7 @@ end
 ---@param unsanitized Path[]
 ---@return string[]
 local function validateOutputPaths(unsanitized)
-    local path = require'yabt.core.path'
+    local path = require 'yabt.core.path'
 
     if unsanitized == nil or #unsanitized == 0 then
         error('No output provided for the build target')
@@ -65,6 +65,14 @@ local M = {
             rule_name = build_step.rule_name,
             variables = build_step.variables,
         }, rule)
+    end,
+
+    ---@param target_spec_path string
+    ---@param target_name string
+    ---@param fn fun(): nil
+    handle_target = function(target_spec_path, target_name, fn)
+        local native = require 'yabt_native'
+        native.handle_target(target_spec_path, target_name, fn)
     end
 }
 

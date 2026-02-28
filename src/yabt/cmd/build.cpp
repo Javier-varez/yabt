@@ -1,3 +1,4 @@
+#include <regex>
 #include <span>
 #include <string>
 #include <string_view>
@@ -21,7 +22,8 @@ const std::string_view LONG_DESCRIPTION =
 
 [[nodiscard]] runtime::Result<void, std::string>
 build_inner(const int threads,
-            const std::optional<std::filesystem::path> &req_build_dir) {
+            const std::optional<std::filesystem::path> &req_build_dir,
+            const std::span<const std::string_view> target_patterns) {
   const std::optional<std::filesystem::path> ws_root =
       workspace::get_workspace_root();
   if (!ws_root.has_value()) {
@@ -48,8 +50,29 @@ build_inner(const int threads,
       ninja_file, lua_engine.build_rules(), lua_engine.build_steps(),
       lua_engine.build_steps_with_rule()));
 
+  // Find all matching targets for a pattern
+  std::vector<std::regex> patterns;
+  for (const std::string_view target_pattern : target_patterns) {
+    patterns.emplace_back(std::string{target_pattern});
+  }
+
+  std::vector<std::string> targets{};
+  for (const std::string &target : lua_engine.all_targets()) {
+    for (const std::regex &regex : patterns) {
+      if (std::regex_match(target, regex)) {
+        targets.push_back(target);
+        break; // don't add a target more than once
+      }
+    }
+  }
+
+  if (targets.size() == 0) {
+    yabt_error("No matched targets");
+  }
+
   const std::string threads_str = std::format("{}", threads);
-  process::Process ninja{"ninja", "-j", threads_str};
+  process::Process ninja{"ninja", "-j", threads_str,
+                         std::span<const std::string>{targets}};
   ninja.set_cwd((build_dir).native());
   RESULT_PROPAGATE_DISCARD(ninja.start());
   return ninja.process_output().to_result();
@@ -91,9 +114,9 @@ BuildCommand::register_command(cli::CliParser &cli_parser) noexcept {
 
 [[nodiscard]] runtime::Result<void, std::string>
 BuildCommand::handle_subcommand(
-    std::span<const std::string_view> /* unparsed_args */) noexcept {
-
-  if (runtime::Result result = build_inner(m_threads, m_build_dir);
+    std::span<const std::string_view> target_patterns) noexcept {
+  if (runtime::Result result =
+          build_inner(m_threads, m_build_dir, target_patterns);
       result.is_error()) {
     yabt_error("Build failed: {}", result.error_value());
   }

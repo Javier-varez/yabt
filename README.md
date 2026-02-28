@@ -59,9 +59,6 @@ yabt build //target/spec/Target
 ```
 
 Builds the given target(s) using the given Build Spec (see definition [below](#target-spec)).
-<!-- TODO: Remove when target specs are supported -->
-Note that, at the time of this writing, target specs are not yet supported. `yabt build` builds 
-all the targets.
 
 ### Clean the build outputs
 

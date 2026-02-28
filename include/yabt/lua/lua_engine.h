@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <map>
+#include <set>
 #include <span>
 #include <string>
 #include <vector>
@@ -16,6 +17,8 @@ struct lua_State;
 
 namespace yabt::lua {
 
+// TODO: This class has become a mixture of things. It should be refactored into
+// separate classes, includine one just defining the "context' library
 class LuaEngine {
 public:
   [[nodiscard]] static yabt::runtime::Result<LuaEngine, std::string>
@@ -50,9 +53,12 @@ public:
   [[nodiscard]] const std::map<std::string, ninja::BuildRule> &
   build_rules() const noexcept;
 
+  [[nodiscard]] std::span<const std::string> all_targets() const noexcept;
+
 private:
   friend int l_add_build_step(lua_State *const L) noexcept;
   friend int l_add_build_step_with_rule(lua_State *const L) noexcept;
+  friend int l_handle_target(lua_State *const L) noexcept;
   friend int l_do_yabt_preload(lua_State *const L) noexcept;
 
   LuaEngine() noexcept = default;
@@ -65,15 +71,20 @@ private:
   [[nodiscard]] runtime::Result<void, std::string>
   add_build_step_with_rule_impl() noexcept;
 
+  void handle_target() noexcept;
+
   [[nodiscard]] int do_yabt_preload() noexcept;
 
   lua_State *m_state;
   std::filesystem::path m_workspace_root;
   std::map<std::string, const char *> m_preloaded_packages;
+  std::string m_current_target;
+  std::set<std::string> m_leaf_paths;
 
   std::vector<ninja::BuildStep> m_build_steps;
   std::vector<ninja::BuildStepWithRule> m_build_steps_with_rule;
   std::map<std::string, ninja::BuildRule> m_build_rules;
+  std::vector<std::string> m_all_targets;
 };
 
 } // namespace yabt::lua
