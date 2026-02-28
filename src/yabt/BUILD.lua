@@ -14,6 +14,7 @@ targets.Lib = cc.Library:new {
         'cmd/help.cpp',
         'cmd/sync.cpp',
         'cmd/clean.cpp',
+        'cmd/list.cpp',
         'log/log.cpp',
         'lua/lua_engine.cpp',
         'module/git_module.cpp',

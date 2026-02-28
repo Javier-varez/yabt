@@ -4,6 +4,7 @@
 #include "yabt/cmd/build.h"
 #include "yabt/cmd/clean.h"
 #include "yabt/cmd/help.h"
+#include "yabt/cmd/list.h"
 #include "yabt/cmd/sync.h"
 #include "yabt/log/log.h"
 #include "yabt/runtime/check_result.h"
@@ -60,6 +61,7 @@ yabt::cmd::BuildCommand build_cmd;
 yabt::cmd::HelpCommand help_cmd;
 yabt::cmd::SyncCommand sync_cmd;
 yabt::cmd::CleanCommand clean_cmd;
+yabt::cmd::ListCommand list_cmd;
 
 void register_subcommands(yabt::cli::CliParser &cli_parser) {
   yabt::runtime::check(build_cmd.register_command(cli_parser),
@@ -70,6 +72,8 @@ void register_subcommands(yabt::cli::CliParser &cli_parser) {
                        "Unable to register sync command: {}");
   yabt::runtime::check(clean_cmd.register_command(cli_parser),
                        "Unable to register clean command: {}");
+  yabt::runtime::check(list_cmd.register_command(cli_parser),
+                       "Unable to register list command: {}");
 }
 
 } // namespace

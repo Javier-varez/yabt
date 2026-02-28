@@ -13,6 +13,7 @@ SRCS := src/yabt/main.cpp            \
 	src/yabt/cmd/help.cpp            \
 	src/yabt/cmd/sync.cpp            \
 	src/yabt/cmd/clean.cpp           \
+	src/yabt/cmd/list.cpp            \
 	src/yabt/cli/cli_parser.cpp      \
 	src/yabt/cli/flag.cpp            \
 	src/yabt/process/process.cpp     \
