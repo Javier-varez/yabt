@@ -67,7 +67,7 @@ build_inner(const int threads,
   }
 
   if (targets.size() == 0) {
-    yabt_error("No matched targets");
+    return runtime::Result<void, std::string>::error("No matched targets");
   }
 
   const std::string threads_str = std::format("{}", threads);
