@@ -1,4 +1,3 @@
-#include <cstdio>
 #include <string>
 
 #include "yabt/cli/cli_parser.h"
