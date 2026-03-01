@@ -51,25 +51,26 @@ struct OutPath final {
 template <typename PathParams> struct Path final {
 
   template <typename T>
-  static void new_path(lua_State *const L, T val) noexcept {
+  static void l_new_relative_path_impl(lua_State *const L, T val) noexcept {
     void *data = lua_newuserdata(L, sizeof(std::filesystem::path));
     luaL_getmetatable(L, PathParams::METATABLE);
     lua_setmetatable(L, -2);
     auto *ud = new (data) std::filesystem::path{val};
-    *ud = std::filesystem::weakly_canonical(*ud);
-  }
 
-  [[nodiscard]] static int l_new_relative_path(lua_State *const L) noexcept {
     const PathLib *const pathlib = get_lib_from_registry(L);
     runtime::check(pathlib != nullptr,
                    "get_lib_from_registry returned nullptr!");
+    *ud =
+        std::filesystem::weakly_canonical(pathlib->*PathParams::BASE_DIR / *ud);
+  }
 
+  [[nodiscard]] static int l_new_relative_path(lua_State *const L) noexcept {
     StackGuard g{L};
     size_t length{};
     const char *path = luaL_checklstring(L, -1, &length);
 
     const std::filesystem::path rel{std::string_view{path, length}};
-    new_path(L, pathlib->*PathParams::BASE_DIR / rel);
+    l_new_relative_path_impl(L, rel);
 
     lua_remove(L, -2);
     return 1;
@@ -113,6 +114,10 @@ template <typename PathParams> struct Path final {
   }
 
   [[nodiscard]] static int l_with_ext(lua_State *const L) noexcept {
+    const PathLib *const pathlib = get_lib_from_registry(L);
+    runtime::check(pathlib != nullptr,
+                   "get_lib_from_registry returned nullptr!");
+
     StackGuard g{L, -1};
     std::filesystem::path *ud = static_cast<std::filesystem::path *>(
         luaL_checkudata(L, 1, PathParams::METATABLE));
@@ -125,7 +130,8 @@ template <typename PathParams> struct Path final {
     newp.replace_extension(ext);
 
     lua_pop(L, 2);
-    Path<OutPath>::new_path(L, std::move(newp));
+    Path<OutPath>::l_new_relative_path_impl(
+        L, std::filesystem::relative(newp, pathlib->*PathParams::BASE_DIR));
     return 1;
   }
 
