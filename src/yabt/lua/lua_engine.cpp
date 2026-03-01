@@ -19,6 +19,7 @@ namespace {
 int registry_key;
 
 void init_registry(lua_State *const L, LuaEngine *data) {
+  StackGuard g{L};
   lua_pushlightuserdata(L, &registry_key);
   lua_pushlightuserdata(L, data);
   lua_settable(L, LUA_REGISTRYINDEX);
@@ -35,23 +36,27 @@ LuaEngine *get_engine(lua_State *const L) {
 } // namespace
 
 int l_add_build_step(lua_State *const L) noexcept {
+  StackGuard g{L, -1}; // 1 input arg, 0 outputs
   LuaEngine *const engine = get_engine(L);
   engine->add_build_step();
   return 0;
 }
 
 int l_add_build_step_with_rule(lua_State *const L) noexcept {
+  StackGuard g{L, -2}; // 2 input args, 0 outputs
   LuaEngine *const engine = get_engine(L);
   engine->add_build_step_with_rule();
   return 0;
 }
 
 int l_handle_target(lua_State *const L) noexcept {
+  StackGuard g{L, -1}; // 3 input args, 2 output args
   LuaEngine *const engine = get_engine(L);
   return engine->handle_target();
 }
 
 int l_do_yabt_preload(lua_State *const L) noexcept {
+  StackGuard g{L};
   LuaEngine *const engine = get_engine(L);
   return engine->do_yabt_preload();
 }
@@ -127,6 +132,7 @@ LuaEngine::construct(const std::filesystem::path &workspace_root,
   LuaEngine engine;
 
   engine.m_state = luaL_newstate();
+  StackGuard g{engine.m_state};
   engine.m_workspace_root = workspace_root;
   if (engine.m_state == nullptr) {
     return runtime::Result<LuaEngine, std::string>::error(
@@ -195,6 +201,7 @@ LuaEngine::exec_string(const char *string) noexcept {
 
 runtime::Result<void, std::string>
 LuaEngine::exec_file(std::string_view file_path) noexcept {
+  StackGuard g{m_state};
   const int result = luaL_dofile(m_state, std::string{file_path}.c_str());
   if (result != 0 /* LUA_OK */) {
     const char *str = luaL_checklstring(m_state, 1, nullptr);
@@ -208,6 +215,7 @@ LuaEngine::exec_file(std::string_view file_path) noexcept {
 void LuaEngine::set_preloaded_lua_packages(
     std::map<std::string, const char *> packages) noexcept {
   m_preloaded_packages = std::move(packages);
+  StackGuard g{m_state};
 
   lua_checkstack(m_state, 4);
   lua_getglobal(m_state, "package");
@@ -221,6 +229,7 @@ void LuaEngine::set_preloaded_lua_packages(
 }
 
 void LuaEngine::set_path(std::span<const std::string> paths) noexcept {
+  StackGuard g{m_state};
   std::string path{};
 
   bool needs_delimiter = false;
@@ -385,7 +394,8 @@ int LuaEngine::handle_target() noexcept {
 
   lua_pop(m_state, 2);
   lua_pushboolean(m_state, true);
-  return 1;
+  lua_pushnil(m_state); // Just to keep the return values balanced
+  return 2;
 }
 
 int LuaEngine::do_yabt_preload() noexcept {
@@ -413,6 +423,7 @@ int LuaEngine::do_yabt_preload() noexcept {
 LuaEngine::register_module(const std::string &name,
                            const std::filesystem::path &path,
                            std::span<const std::string> target_specs) noexcept {
+  StackGuard g{m_state};
   runtime::check(lua_checkstack(m_state, 4), "Exceeded maximum Lua stack size");
 
   lua_getglobal(m_state, "modules");

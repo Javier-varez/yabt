@@ -11,6 +11,30 @@
 
 namespace yabt::lua {
 
+class StackGuard {
+public:
+  inline explicit StackGuard(lua_State *const L, int delta = 0)
+      : m_state{L}, m_stack{lua_gettop(L)}, m_delta{delta} {}
+
+  StackGuard(const StackGuard &) = delete;
+  StackGuard(StackGuard &&) = delete;
+  StackGuard &operator=(const StackGuard &) = delete;
+  StackGuard &operator=(StackGuard &&) = delete;
+
+  inline ~StackGuard() {
+    int cur = lua_gettop(m_state);
+    runtime::check(
+        cur == m_stack + m_delta,
+        "Stack is not balanced. Exit {}. Entry {}. Expected delta {}", cur,
+        m_stack, m_delta);
+  }
+
+private:
+  lua_State *const m_state;
+  const int m_stack;
+  const int m_delta;
+};
+
 /// Parsing type identifiers
 template <typename T, typename... Args> struct LuaStruct final {};
 
@@ -71,14 +95,16 @@ parse_with_spec(lua_State *const L, LuaInteger) noexcept;
 parse_with_spec(lua_State *const L, LuaBoolean) noexcept;
 
 template <typename T>
-[[nodiscard]] runtime::Result<T, std::string>
+[[nodiscard, gnu::noinline]] runtime::Result<T, std::string>
 parse_lua_object(lua_State *const L) noexcept {
+  StackGuard g{L};
   return parse_with_spec(L, typename LuaParseSpec<T>::spec{});
 }
 
 template <typename T>
-[[nodiscard]] runtime::Result<std::vector<T>, std::string>
+[[nodiscard, gnu::noinline]] runtime::Result<std::vector<T>, std::string>
 parse_with_spec(lua_State *const L, LuaArray<T>) noexcept {
+  StackGuard g{L};
   if (lua_isnil(L, -1)) {
     // Treat a missing array as an empty array
     return runtime::Result<std::vector<T>, std::string>::ok(std::vector<T>{});
@@ -105,8 +131,9 @@ parse_with_spec(lua_State *const L, LuaArray<T>) noexcept {
 }
 
 template <typename T, typename U>
-[[nodiscard]] runtime::Result<std::map<T, U>, std::string>
+[[nodiscard, gnu::noinline]] runtime::Result<std::map<T, U>, std::string>
 parse_with_spec(lua_State *const L, LuaKvPairs<T, U>) noexcept {
+  StackGuard g{L};
   if (lua_isnil(L, -1)) {
     // Treat a missing table as an empty table
     return runtime::Result<std::map<T, U>, std::string>::ok(std::map<T, U>{});
@@ -135,8 +162,9 @@ parse_with_spec(lua_State *const L, LuaKvPairs<T, U>) noexcept {
 }
 
 template <typename T, typename... Args>
-[[nodiscard]] runtime::Result<T, std::string>
+[[nodiscard, gnu::noinline]] runtime::Result<T, std::string>
 parse_with_spec(lua_State *const L, LuaStruct<T, Args...>) noexcept {
+  StackGuard g{L};
   if (!lua_istable(L, -1)) {
     return runtime::Result<T, std::string>::error(
         std::format("Deserializing struct, but found type: {}",
@@ -174,8 +202,9 @@ parse_with_spec(lua_State *const L, LuaStruct<T, Args...>) noexcept {
   return runtime::Result<T, std::string>::ok(result);
 }
 
-[[nodiscard]] inline runtime::Result<std::string, std::string>
+[[nodiscard, gnu::noinline]] inline runtime::Result<std::string, std::string>
 parse_with_spec(lua_State *const L, LuaString) noexcept {
+  StackGuard g{L};
   if (lua_isnil(L, -1)) {
     // Empty string
     return runtime::Result<std::string, std::string>::ok("");
@@ -190,8 +219,9 @@ parse_with_spec(lua_State *const L, LuaString) noexcept {
   return runtime::Result<std::string, std::string>::ok(lua_tostring(L, -1));
 }
 
-[[nodiscard]] inline runtime::Result<int, std::string>
+[[nodiscard, gnu::noinline]] inline runtime::Result<int, std::string>
 parse_with_spec(lua_State *const L, LuaInteger) noexcept {
+  StackGuard g{L};
   if (!lua_isnumber(L, -1)) {
     return runtime::Result<int, std::string>::error(
         std::format("Deserializing int, but found type {}",
@@ -202,8 +232,9 @@ parse_with_spec(lua_State *const L, LuaInteger) noexcept {
       static_cast<int>(lua_tointeger(L, -1)));
 }
 
-[[nodiscard]] inline runtime::Result<bool, std::string>
+[[nodiscard, gnu::noinline]] inline runtime::Result<bool, std::string>
 parse_with_spec(lua_State *const L, LuaBoolean) noexcept {
+  StackGuard g{L};
   if (lua_isnil(L, -1)) {
     // Empty string
     return runtime::Result<bool, std::string>::ok(false);
