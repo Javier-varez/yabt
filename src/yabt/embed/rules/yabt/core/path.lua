@@ -42,7 +42,7 @@ end
 ---@return string # the extension of the filepath
 ---@nodiscard
 function Path:ext()
-    return self._relative:match(".*%.([^%.]*)")
+    return self._relative:match(".+%.([^%.]+)$")
 end
 
 ---@param ext string an extension to add
