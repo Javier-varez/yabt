@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 
+#include "yabt/lua/path_lib.h"
 #include "yabt/ninja/build_rule.h"
 #include "yabt/ninja/build_step.h"
 #include "yabt/runtime/result.h"
@@ -76,6 +77,7 @@ private:
   [[nodiscard]] int do_yabt_preload() noexcept;
 
   lua_State *m_state;
+  std::optional<PathLib> m_pathlib;
   std::filesystem::path m_workspace_root;
   std::map<std::string, const char *> m_preloaded_packages;
   std::string m_current_target;

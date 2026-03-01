@@ -42,7 +42,7 @@ local allowed_globals = {
 
 local sandbox_metatable = {
     __index = allowed_globals,
-    __newindex = function(_, _)
+    __newindex = function(_, _, _)
         error('Creating new global variables is not supported in BUILD.lua files')
     end
 }

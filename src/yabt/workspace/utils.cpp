@@ -22,7 +22,6 @@ get_workspace_root() noexcept {
     const auto iter = std::find_if(
         begin(dir_iter), end(dir_iter),
         [](const std::filesystem::directory_entry &entry) {
-          //
           return entry.is_regular_file() &&
                  entry.path().filename() == module::MODULE_FILE_NAME;
         });

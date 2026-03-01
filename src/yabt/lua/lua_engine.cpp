@@ -103,19 +103,11 @@ static const luaL_Reg yabt_methods[]{
     {nullptr, nullptr},
 };
 
-void luaopen_yabt(lua_State *const L,
-                  const std::filesystem::path &workspace_root,
-                  const std::filesystem::path &build_dir) noexcept {
+void luaopen_yabt(lua_State *const L) noexcept {
   luaL_register(L, "yabt_native", yabt_methods);
   lua_pop(L, 1);
 
   runtime::check(lua_checkstack(L, 2), "Exceeded maximum Lua stack size");
-
-  lua_pushstring(L, std::filesystem::absolute(workspace_root).c_str());
-  lua_setglobal(L, "SOURCE_DIR");
-
-  lua_pushstring(L, std::filesystem::absolute(build_dir).c_str());
-  lua_setglobal(L, "OUTPUT_DIR");
 }
 
 void init_modules_global(lua_State *const L) noexcept {
@@ -133,6 +125,7 @@ LuaEngine::construct(const std::filesystem::path &workspace_root,
 
   engine.m_state = luaL_newstate();
   StackGuard g{engine.m_state};
+
   engine.m_workspace_root = workspace_root;
   if (engine.m_state == nullptr) {
     return runtime::Result<LuaEngine, std::string>::error(
@@ -140,7 +133,7 @@ LuaEngine::construct(const std::filesystem::path &workspace_root,
   }
 
   luaL_openlibs(engine.m_state);
-  luaopen_yabt(engine.m_state, workspace_root, build_dir);
+  luaopen_yabt(engine.m_state);
 
   init_registry(engine.m_state, &engine);
   set_package_path(engine.m_state, "");
@@ -148,11 +141,14 @@ LuaEngine::construct(const std::filesystem::path &workspace_root,
 
   init_modules_global(engine.m_state);
 
+  engine.m_pathlib.emplace(engine.m_state, workspace_root, build_dir);
+
   return runtime::Result<LuaEngine, std::string>::ok(std::move(engine));
 }
 
 LuaEngine::LuaEngine(LuaEngine &&other) noexcept {
   m_state = other.m_state;
+  m_pathlib = std::move(other.m_pathlib);
   m_workspace_root = std::move(other.m_workspace_root);
   m_preloaded_packages = std::move(other.m_preloaded_packages);
   m_build_steps = std::move(other.m_build_steps);
@@ -168,6 +164,7 @@ LuaEngine &LuaEngine::operator=(LuaEngine &&other) noexcept {
     if (m_state)
       lua_close(m_state);
     m_state = other.m_state;
+    m_pathlib = std::move(other.m_pathlib);
     m_workspace_root = std::move(other.m_workspace_root);
     m_preloaded_packages = std::move(other.m_preloaded_packages);
     m_build_steps = std::move(other.m_build_steps);

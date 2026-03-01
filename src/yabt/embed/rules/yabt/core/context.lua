@@ -5,7 +5,7 @@ local function validateInputPaths(unsanitized)
 
     local ins = {}
     for _, input in ipairs(unsanitized) do
-        if not path.isPath(input) then
+        if not path.is_path(input) then
             error('input is not a Path: ' .. input)
         end
 
@@ -25,7 +25,7 @@ local function validateOutputPaths(unsanitized)
 
     local outs = {}
     for _, out in ipairs(unsanitized) do
-        if not path.isOutPath(out) then
+        if not path.is_out_path(out) then
             error('output is not an OutPath: ' .. out)
         end
 
