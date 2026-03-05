@@ -37,26 +37,26 @@ runtime::Result<void, std::string> save_ninja_file(
   i = 0;
   for (const ninja::BuildStep &step : build_steps) {
     fprintf(file, "build ");
-    for (const std::string &out : step.outs) {
-      fprintf(file, "%s ", out.c_str());
+    for (const auto &out : step.outs) {
+      fprintf(file, "%s ", out.path.c_str());
     }
 
     fprintf(file, ": step%ld", i++);
-    for (const std::string &in : step.ins) {
-      fprintf(file, "%s ", in.c_str());
+    for (const auto &in : step.ins) {
+      fprintf(file, "%s ", in.path.c_str());
     }
     fprintf(file, "\n");
   }
 
   for (const ninja::BuildStepWithRule &step : build_steps_with_rule) {
     fprintf(file, "build ");
-    for (const std::string &out : step.outs) {
-      fprintf(file, "%s ", out.c_str());
+    for (const auto &out : step.outs) {
+      fprintf(file, "%s ", out.path.c_str());
     }
 
     fprintf(file, ": %s ", step.rule_name.c_str());
-    for (const std::string &in : step.ins) {
-      fprintf(file, "%s ", in.c_str());
+    for (const auto &in : step.ins) {
+      fprintf(file, "%s ", in.path.c_str());
     }
     fprintf(file, "\n");
     for (const auto &v : step.variables) {

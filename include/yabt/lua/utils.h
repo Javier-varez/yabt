@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 
+#include "yabt/lua/path.h"
 #include "yabt/runtime/result.h"
 #include "yabt/utils/constexpr_string.h"
 
@@ -49,6 +50,8 @@ struct LuaString final {};
 struct LuaInteger final {};
 struct LuaBoolean final {};
 
+template <typename T> struct LuaUserData final {};
+
 // Parsing spec type marker
 template <typename T> struct LuaParseSpec;
 
@@ -73,6 +76,14 @@ template <> struct LuaParseSpec<bool> {
   using spec = LuaBoolean;
 };
 
+template <> struct LuaParseSpec<Path> {
+  using spec = LuaUserData<Path>;
+};
+
+template <> struct LuaParseSpec<OutPath> {
+  using spec = LuaUserData<OutPath>;
+};
+
 template <typename T>
 [[nodiscard]] runtime::Result<std::vector<T>, std::string>
 parse_with_spec(lua_State *const L, LuaArray<T>) noexcept;
@@ -95,14 +106,14 @@ parse_with_spec(lua_State *const L, LuaInteger) noexcept;
 parse_with_spec(lua_State *const L, LuaBoolean) noexcept;
 
 template <typename T>
-[[nodiscard, gnu::noinline]] runtime::Result<T, std::string>
+[[nodiscard]] runtime::Result<T, std::string>
 parse_lua_object(lua_State *const L) noexcept {
   StackGuard g{L};
   return parse_with_spec(L, typename LuaParseSpec<T>::spec{});
 }
 
 template <typename T>
-[[nodiscard, gnu::noinline]] runtime::Result<std::vector<T>, std::string>
+[[nodiscard]] runtime::Result<std::vector<T>, std::string>
 parse_with_spec(lua_State *const L, LuaArray<T>) noexcept {
   StackGuard g{L};
   if (lua_isnil(L, -1)) {
@@ -131,7 +142,7 @@ parse_with_spec(lua_State *const L, LuaArray<T>) noexcept {
 }
 
 template <typename T, typename U>
-[[nodiscard, gnu::noinline]] runtime::Result<std::map<T, U>, std::string>
+[[nodiscard]] runtime::Result<std::map<T, U>, std::string>
 parse_with_spec(lua_State *const L, LuaKvPairs<T, U>) noexcept {
   StackGuard g{L};
   if (lua_isnil(L, -1)) {
@@ -162,7 +173,7 @@ parse_with_spec(lua_State *const L, LuaKvPairs<T, U>) noexcept {
 }
 
 template <typename T, typename... Args>
-[[nodiscard, gnu::noinline]] runtime::Result<T, std::string>
+[[nodiscard]] runtime::Result<T, std::string>
 parse_with_spec(lua_State *const L, LuaStruct<T, Args...>) noexcept {
   StackGuard g{L};
   if (!lua_istable(L, -1)) {
@@ -202,7 +213,7 @@ parse_with_spec(lua_State *const L, LuaStruct<T, Args...>) noexcept {
   return runtime::Result<T, std::string>::ok(result);
 }
 
-[[nodiscard, gnu::noinline]] inline runtime::Result<std::string, std::string>
+[[nodiscard]] inline runtime::Result<std::string, std::string>
 parse_with_spec(lua_State *const L, LuaString) noexcept {
   StackGuard g{L};
   if (lua_isnil(L, -1)) {
@@ -219,7 +230,7 @@ parse_with_spec(lua_State *const L, LuaString) noexcept {
   return runtime::Result<std::string, std::string>::ok(lua_tostring(L, -1));
 }
 
-[[nodiscard, gnu::noinline]] inline runtime::Result<int, std::string>
+[[nodiscard]] inline runtime::Result<int, std::string>
 parse_with_spec(lua_State *const L, LuaInteger) noexcept {
   StackGuard g{L};
   if (!lua_isnumber(L, -1)) {
@@ -232,7 +243,7 @@ parse_with_spec(lua_State *const L, LuaInteger) noexcept {
       static_cast<int>(lua_tointeger(L, -1)));
 }
 
-[[nodiscard, gnu::noinline]] inline runtime::Result<bool, std::string>
+[[nodiscard]] inline runtime::Result<bool, std::string>
 parse_with_spec(lua_State *const L, LuaBoolean) noexcept {
   StackGuard g{L};
   if (lua_isnil(L, -1)) {
@@ -249,6 +260,12 @@ parse_with_spec(lua_State *const L, LuaBoolean) noexcept {
   return runtime::Result<bool, std::string>::ok(
       static_cast<bool>(lua_toboolean(L, -1)));
 }
+
+[[nodiscard]] runtime::Result<Path, std::string>
+parse_with_spec(lua_State *const L, LuaUserData<Path>) noexcept;
+
+[[nodiscard]] runtime::Result<OutPath, std::string>
+parse_with_spec(lua_State *const L, LuaUserData<OutPath>) noexcept;
 
 #define _REMOVE_PARENS_IMPL(...) __VA_ARGS__
 #define _REMOVE_PARENS(...) _REMOVE_PARENS_IMPL __VA_ARGS__

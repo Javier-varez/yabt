@@ -1,18 +1,36 @@
 #include "yabt/build/build.h"
 #include "yabt/embed/embed.h"
 #include "yabt/log/log.h"
+#include "yabt/lua/lua_engine.h"
 
 namespace yabt::build {
 
+namespace {
+
+void register_modules(lua::LuaEngine &engine, LuaModules &modules) noexcept {
+  engine.register_lua_module(modules.pathlib);
+  engine.register_lua_module(modules.contextlib);
+}
+
+} // namespace
+
+[[nodiscard]] std::unique_ptr<LuaModules>
+construct_lua_modules(const std::filesystem::path &ws_root,
+                      const std::filesystem::path &build_dir) noexcept {
+  return std::make_unique<LuaModules>(LuaModules{
+      .pathlib{ws_root, build_dir},
+      .contextlib{},
+  });
+}
+
 runtime::Result<lua::LuaEngine, std::string> prepare_lua_engine(
-    const std::filesystem::path &ws_root,
-    const std::filesystem::path &build_dir,
-    std::span<const std::unique_ptr<module::Module>> modules) noexcept {
-  lua::LuaEngine engine =
-      RESULT_PROPAGATE(lua::LuaEngine::construct(ws_root, build_dir));
+    const std::filesystem::path &ws_root, LuaModules &lua_modules,
+    std::span<const std::unique_ptr<module::Module>> yabt_modules) noexcept {
+  lua::LuaEngine engine = RESULT_PROPAGATE(lua::LuaEngine::construct(ws_root));
+  register_modules(engine, lua_modules);
 
   std::vector<std::string> paths;
-  for (const auto &mod : modules) {
+  for (const auto &mod : yabt_modules) {
     const std::optional rules_path = mod->rules_dir();
     if (rules_path.has_value()) {
       const std::filesystem::path p = rules_path.value() / "?.lua";
@@ -86,7 +104,7 @@ runtime::Result<lua::LuaEngine, std::string> prepare_lua_engine(
 
     // Register modules
     RESULT_PROPAGATE_DISCARD(
-        engine.register_module(mod->name(), mod_dir, target_specs));
+        engine.register_yabt_module(mod->name(), mod_dir, target_specs));
   }
 
   return engine.exec_string(embed::get_runtime_file());

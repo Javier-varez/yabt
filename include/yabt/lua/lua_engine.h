@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 
+#include "yabt/lua/module.h"
 #include "yabt/lua/path_lib.h"
 #include "yabt/ninja/build_rule.h"
 #include "yabt/ninja/build_step.h"
@@ -18,29 +19,32 @@ struct lua_State;
 
 namespace yabt::lua {
 
-// TODO: This class has become a mixture of things. It should be refactored into
-// separate classes, includine one just defining the "context' library
 class LuaEngine {
 public:
   [[nodiscard]] static yabt::runtime::Result<LuaEngine, std::string>
-  construct(const std::filesystem::path &workspace_root,
-            const std::filesystem::path &build_dir) noexcept;
+  construct(const std::filesystem::path &workspace_root) noexcept;
 
   LuaEngine(const LuaEngine &) noexcept = delete;
-  LuaEngine(LuaEngine &&) noexcept;
   LuaEngine &operator=(const LuaEngine &) noexcept = delete;
+
+  LuaEngine(LuaEngine &&) noexcept;
   LuaEngine &operator=(LuaEngine &&) noexcept;
 
   ~LuaEngine() noexcept;
 
   void set_path(std::span<const std::string> paths) noexcept;
 
+  // TODO: Move to preload module
   void set_preloaded_lua_packages(
       std::map<std::string, const char *> packages) noexcept;
 
+  // TODO: Move to runtime lua module
   [[nodiscard]] runtime::Result<void, std::string>
-  register_module(const std::string &name, const std::filesystem::path &path,
-                  std::span<const std::string> target_specs) noexcept;
+  register_yabt_module(const std::string &name,
+                       const std::filesystem::path &path,
+                       std::span<const std::string> target_specs) noexcept;
+
+  void register_lua_module(LuaModule &module) noexcept;
 
   [[nodiscard]] runtime::Result<void, std::string>
   exec_file(std::string_view file_path) noexcept;
@@ -48,32 +52,10 @@ public:
   [[nodiscard]] runtime::Result<void, std::string>
   exec_string(const char *string) noexcept;
 
-  [[nodiscard]] std::span<const ninja::BuildStep> build_steps() const noexcept;
-  [[nodiscard]] std::span<const ninja::BuildStepWithRule>
-  build_steps_with_rule() const noexcept;
-  [[nodiscard]] const std::map<std::string, ninja::BuildRule> &
-  build_rules() const noexcept;
-
-  [[nodiscard]] std::span<const std::string> all_targets() const noexcept;
-
 private:
-  friend int l_add_build_step(lua_State *const L) noexcept;
-  friend int l_add_build_step_with_rule(lua_State *const L) noexcept;
-  friend int l_handle_target(lua_State *const L) noexcept;
   friend int l_do_yabt_preload(lua_State *const L) noexcept;
 
   LuaEngine() noexcept = default;
-
-  void add_build_step() noexcept;
-  [[nodiscard]] runtime::Result<void, std::string>
-  add_build_step_impl() noexcept;
-
-  void add_build_step_with_rule() noexcept;
-  [[nodiscard]] runtime::Result<void, std::string>
-  add_build_step_with_rule_impl() noexcept;
-
-  [[nodiscard]] int handle_target() noexcept;
-
   [[nodiscard]] int do_yabt_preload() noexcept;
 
   lua_State *m_state;

@@ -1,8 +1,11 @@
 #include "yabt/lua/path_lib.h"
-#include "lauxlib.h"
-#include "yabt/lua/utils.h"
 
 #include <filesystem>
+
+#include "yabt/log/log.h"
+#include "yabt/lua/utils.h"
+
+#include "lua.hpp"
 
 namespace yabt::lua {
 
@@ -11,6 +14,10 @@ namespace {
 int registry_key;
 
 void init_registry(lua_State *const L, PathLib *data) {
+  if (L == nullptr) {
+    return;
+  }
+
   StackGuard g{L};
   lua_pushlightuserdata(L, &registry_key);
   lua_pushlightuserdata(L, data);
@@ -30,25 +37,25 @@ constexpr static const char OUT_PATH_META[] = "Yabt.PathLib.OutPath";
 
 static constexpr const char PATH_PACKAGE_NAME[] = "yabt.core.path";
 
-struct InPath final {
+struct InPathParams final {
   constexpr static const char *const METATABLE = IN_PATH_META;
   constexpr static const char *const PACKAGE_NAME = "yabt.core.in_path";
   constexpr static const char *const TYPE_NAME = "InPath";
 
   constexpr static std::filesystem::path PathLib::*BASE_DIR =
-      &PathLib::m_source_dir;
+      &PathLib::source_dir;
 };
 
-struct OutPath final {
+struct OutPathParams final {
   constexpr static const char *const METATABLE = OUT_PATH_META;
   constexpr static const char *const PACKAGE_NAME = "yabt.core.out_path";
   constexpr static const char *const TYPE_NAME = "OutPath";
 
   constexpr static std::filesystem::path PathLib::*BASE_DIR =
-      &PathLib::m_output_dir;
+      &PathLib::output_dir;
 };
 
-template <typename PathParams> struct Path final {
+template <typename PathParams> struct PathImpl final {
 
   template <typename T>
   static void l_new_relative_path_impl(lua_State *const L, T val) noexcept {
@@ -130,7 +137,7 @@ template <typename PathParams> struct Path final {
     newp.replace_extension(ext);
 
     lua_pop(L, 2);
-    Path<OutPath>::l_new_relative_path_impl(
+    PathImpl<OutPathParams>::l_new_relative_path_impl(
         L, std::filesystem::relative(newp, pathlib->*PathParams::BASE_DIR));
     return 1;
   }
@@ -198,29 +205,60 @@ constexpr static struct luaL_Reg free_functions_table[] = {
 
 } // namespace
 
-PathLib::PathLib(lua_State *const L, std::filesystem::path source_dir,
-                 std::filesystem::path output_dir)
-    : m_state{L}, m_source_dir{source_dir}, m_output_dir{output_dir} {
+runtime::Result<OutPath, std::string>
+parse_with_spec(lua_State *const L, LuaUserData<OutPath>) noexcept {
+  StackGuard g{L};
+  std::filesystem::path *ud = static_cast<std::filesystem::path *>(
+      luaL_checkudata(L, -1, OutPathParams::METATABLE));
+  luaL_argcheck(L, ud != nullptr, 1, "path expected");
+  return runtime::Result<OutPath, std::string>::ok(OutPath{ud->string()});
+}
+
+runtime::Result<Path, std::string> parse_with_spec(lua_State *const L,
+                                                   LuaUserData<Path>) noexcept {
+  StackGuard g{L};
+  const auto *const in =
+      static_cast<std::filesystem::path *>(luaL_testudata(L, -1, IN_PATH_META));
+  if (in != nullptr) {
+    return runtime::Result<Path, std::string>::ok(Path{in->string()});
+  }
+
+  const auto *const out = static_cast<std::filesystem::path *>(
+      luaL_testudata(L, -1, OUT_PATH_META));
+  if (out != nullptr) {
+    return runtime::Result<Path, std::string>::ok(Path{out->string()});
+  }
+
+  return runtime::Result<Path, std::string>::error(std::format(
+      "Expected path but got: {}", lua_typename(L, lua_type(L, -1))));
+}
+
+PathLib::PathLib(std::filesystem::path source_dir,
+                 std::filesystem::path output_dir) noexcept
+    : source_dir{source_dir}, output_dir{output_dir}, state{} {}
+
+void PathLib::register_in_engine(lua_State *const L) noexcept {
+  state = L;
   StackGuard g{L};
   luaL_register(L, PATH_PACKAGE_NAME, free_functions_table);
-  Path<InPath>::register_lib(L);
-  Path<OutPath>::register_lib(L);
+  PathImpl<InPathParams>::register_lib(L);
+  PathImpl<OutPathParams>::register_lib(L);
   lua_pop(L, 1);
   init_registry(L, this);
 }
 
 PathLib::PathLib(PathLib &&other) noexcept
-    : m_state{other.m_state}, m_source_dir{std::move(other.m_source_dir)},
-      m_output_dir{std::move(other.m_output_dir)} {
-  init_registry(m_state, this);
+    : source_dir{std::move(other.source_dir)},
+      output_dir{std::move(other.output_dir)}, state{other.state} {
+  init_registry(state, this);
 }
 
 PathLib &PathLib::operator=(PathLib &&other) noexcept {
   if (&other != this) {
-    m_state = other.m_state;
-    m_source_dir = std::move(other.m_source_dir);
-    m_output_dir = std::move(other.m_output_dir);
-    init_registry(m_state, this);
+    state = other.state;
+    source_dir = std::move(other.source_dir);
+    output_dir = std::move(other.output_dir);
+    init_registry(state, this);
   }
   return *this;
 }

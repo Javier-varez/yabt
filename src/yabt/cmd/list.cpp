@@ -31,8 +31,9 @@ list_inner(const std::span<const std::string_view> target_patterns) {
       std::filesystem::absolute(ws_root.value() / workspace::BUILD_DIR_NAME);
 
   auto modules = RESULT_PROPAGATE(workspace::open_workspace(ws_root.value()));
+  auto lua_modules = build::construct_lua_modules(ws_root.value(), build_dir);
   auto lua_engine = RESULT_PROPAGATE(
-      build::prepare_lua_engine(ws_root.value(), build_dir, modules));
+      build::prepare_lua_engine(ws_root.value(), *lua_modules, modules));
   RESULT_PROPAGATE_DISCARD(
       build::invoke_rule_initializers(lua_engine, modules));
   RESULT_PROPAGATE_DISCARD(build::invoke_build_targets(lua_engine, modules));
@@ -45,11 +46,11 @@ list_inner(const std::span<const std::string_view> target_patterns) {
 
   std::vector<std::string> targets{};
   if (target_patterns.size() == 0) {
-    for (const std::string &target : lua_engine.all_targets()) {
+    for (const std::string &target : lua_modules->contextlib.all_targets) {
       targets.push_back(target);
     }
   } else {
-    for (const std::string &target : lua_engine.all_targets()) {
+    for (const std::string &target : lua_modules->contextlib.all_targets) {
       for (const std::regex &regex : patterns) {
         if (std::regex_match(target, regex)) {
           targets.push_back(target);

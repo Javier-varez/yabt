@@ -3,7 +3,9 @@
 #include <memory>
 #include <span>
 
+#include "yabt/lua/context_lib.h"
 #include "yabt/lua/lua_engine.h"
+#include "yabt/lua/path_lib.h"
 #include "yabt/module/module.h"
 #include "yabt/runtime/result.h"
 
@@ -12,10 +14,18 @@ namespace yabt::build {
 constexpr static std::string_view BUILD_FILE_NAME = "BUILD.lua";
 constexpr static std::string_view INIT_FILE_NAME = "INIT.lua";
 
-[[nodiscard]] runtime::Result<lua::LuaEngine, std::string>
-prepare_lua_engine(const std::filesystem::path &ws_root,
-                   const std::filesystem::path &build_dir,
-                   std::span<const std::unique_ptr<module::Module>>) noexcept;
+struct LuaModules final {
+  lua::PathLib pathlib;
+  lua::ContextLib contextlib;
+};
+
+[[nodiscard]] std::unique_ptr<LuaModules>
+construct_lua_modules(const std::filesystem::path &ws_root,
+                      const std::filesystem::path &build_dir) noexcept;
+
+[[nodiscard]] runtime::Result<lua::LuaEngine, std::string> prepare_lua_engine(
+    const std::filesystem::path &ws_root, LuaModules &lua_modules,
+    std::span<const std::unique_ptr<module::Module>> yabt_modules) noexcept;
 
 [[nodiscard]] runtime::Result<void, std::string> invoke_rule_initializers(
     lua::LuaEngine &engine,

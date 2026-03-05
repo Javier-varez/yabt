@@ -4,13 +4,14 @@
 #include <string>
 #include <vector>
 
+#include "yabt/lua/path.h"
 #include "yabt/lua/utils.h"
 
 namespace yabt::ninja {
 
 struct BuildStep {
-  std::vector<std::string> outs;
-  std::vector<std::string> ins;
+  std::vector<lua::OutPath> outs;
+  std::vector<lua::Path> ins;
   std::string cmd;
   std::string descr;
 };
@@ -18,8 +19,8 @@ struct BuildStep {
 using VariableMap = std::map<std::string, std::string>;
 
 struct BuildStepWithRule {
-  std::vector<std::string> outs;
-  std::vector<std::string> ins;
+  std::vector<lua::OutPath> outs;
+  std::vector<lua::Path> ins;
   std::string rule_name;
   VariableMap variables;
 };
@@ -28,18 +29,18 @@ struct BuildStepWithRule {
 
 namespace yabt::lua {
 
-LUA_STRUCT_PARSE_SPEC_DEF(            //
-    ::yabt::ninja::BuildStep,         //
-    (std::vector<std::string>, outs), //
-    (std::vector<std::string>, ins),  //
-    (std::string, cmd),               //
-    (std::string, descr)              //
+LUA_STRUCT_PARSE_SPEC_DEF(             //
+    ::yabt::ninja::BuildStep,          //
+    (std::vector<lua::OutPath>, outs), //
+    (std::vector<lua::Path>, ins),     //
+    (std::string, cmd),                //
+    (std::string, descr)               //
 );
 
 LUA_STRUCT_PARSE_SPEC_DEF(                  //
     ::yabt::ninja::BuildStepWithRule,       //
-    (std::vector<std::string>, outs),       //
-    (std::vector<std::string>, ins),        //
+    (std::vector<lua::OutPath>, outs),      //
+    (std::vector<lua::Path>, ins),          //
     (std::string, rule_name),               //
     (::yabt::ninja::VariableMap, variables) //
 );

@@ -35,26 +35,6 @@ LuaEngine *get_engine(lua_State *const L) {
 
 } // namespace
 
-int l_add_build_step(lua_State *const L) noexcept {
-  StackGuard g{L, -1}; // 1 input arg, 0 outputs
-  LuaEngine *const engine = get_engine(L);
-  engine->add_build_step();
-  return 0;
-}
-
-int l_add_build_step_with_rule(lua_State *const L) noexcept {
-  StackGuard g{L, -2}; // 2 input args, 0 outputs
-  LuaEngine *const engine = get_engine(L);
-  engine->add_build_step_with_rule();
-  return 0;
-}
-
-int l_handle_target(lua_State *const L) noexcept {
-  StackGuard g{L, -1}; // 3 input args, 2 output args
-  LuaEngine *const engine = get_engine(L);
-  return engine->handle_target();
-}
-
 int l_do_yabt_preload(lua_State *const L) noexcept {
   StackGuard g{L};
   LuaEngine *const engine = get_engine(L);
@@ -75,7 +55,7 @@ template <log::LogLevel level> int l_log(lua_State *const L) {
     lua_error(L);
   }
 
-  const char *str = lua_tostring(L, -1);
+  const char *const str = lua_tostring(L, -1);
   if constexpr (level == log::LogLevel::VERBOSE) {
     yabt_verbose("{}", str);
   } else if constexpr (level == log::LogLevel::DEBUG) {
@@ -91,10 +71,8 @@ template <log::LogLevel level> int l_log(lua_State *const L) {
   return 0;
 }
 
+// TODO: Move to Log module
 static const luaL_Reg yabt_methods[]{
-    {"add_build_step", l_add_build_step},
-    {"add_build_step_with_rule", l_add_build_step_with_rule},
-    {"handle_target", l_handle_target},
     {"log_verbose", l_log<log::LogLevel::VERBOSE>},
     {"log_debug", l_log<log::LogLevel::DEBUG>},
     {"log_info", l_log<log::LogLevel::INFO>},
@@ -119,8 +97,7 @@ void init_modules_global(lua_State *const L) noexcept {
 } // namespace
 
 [[nodiscard]] yabt::runtime::Result<LuaEngine, std::string>
-LuaEngine::construct(const std::filesystem::path &workspace_root,
-                     const std::filesystem::path &build_dir) noexcept {
+LuaEngine::construct(const std::filesystem::path &workspace_root) noexcept {
   LuaEngine engine;
 
   engine.m_state = luaL_newstate();
@@ -141,19 +118,17 @@ LuaEngine::construct(const std::filesystem::path &workspace_root,
 
   init_modules_global(engine.m_state);
 
-  engine.m_pathlib.emplace(engine.m_state, workspace_root, build_dir);
-
   return runtime::Result<LuaEngine, std::string>::ok(std::move(engine));
+}
+
+void LuaEngine::register_lua_module(LuaModule &module) noexcept {
+  module.register_in_engine(m_state);
 }
 
 LuaEngine::LuaEngine(LuaEngine &&other) noexcept {
   m_state = other.m_state;
-  m_pathlib = std::move(other.m_pathlib);
   m_workspace_root = std::move(other.m_workspace_root);
   m_preloaded_packages = std::move(other.m_preloaded_packages);
-  m_build_steps = std::move(other.m_build_steps);
-  m_build_steps_with_rule = std::move(other.m_build_steps_with_rule);
-  m_build_rules = std::move(other.m_build_rules);
   other.m_state = nullptr;
   // The object is moved, so we need to update our reference in the lua runtime
   init_registry(m_state, this);
@@ -164,12 +139,8 @@ LuaEngine &LuaEngine::operator=(LuaEngine &&other) noexcept {
     if (m_state)
       lua_close(m_state);
     m_state = other.m_state;
-    m_pathlib = std::move(other.m_pathlib);
     m_workspace_root = std::move(other.m_workspace_root);
     m_preloaded_packages = std::move(other.m_preloaded_packages);
-    m_build_steps = std::move(other.m_build_steps);
-    m_build_steps_with_rule = std::move(other.m_build_steps_with_rule);
-    m_build_rules = std::move(other.m_build_rules);
     other.m_state = nullptr;
     // The object is moved, so we need to update our reference in the lua
     // runtime
@@ -239,162 +210,6 @@ void LuaEngine::set_path(std::span<const std::string> paths) noexcept {
   set_package_path(m_state, path.c_str());
 }
 
-runtime::Result<void, std::string> LuaEngine::add_build_step_impl() noexcept {
-  if (lua_gettop(m_state) != 1) {
-    return runtime::Result<void, std::string>::error(
-        std::format("Expected 1 argument to add_build_step, but got: {}",
-                    lua_gettop(m_state)));
-  }
-
-  const ninja::BuildStep step =
-      RESULT_PROPAGATE(parse_lua_object<ninja::BuildStep>(m_state));
-  m_build_steps.push_back(step);
-  if (step.outs.size() == 0) {
-    return runtime::Result<void, std::string>::error(
-        "Attempted to register build_step without an out");
-  }
-  yabt_verbose("Registered build step for: {} with cmd: {}", step.outs[0],
-               step.cmd);
-
-  for (const std::string &out : step.outs) {
-    m_leaf_paths.insert(out);
-  }
-  for (const std::string &in : step.ins) {
-    m_leaf_paths.erase(in);
-  }
-
-  lua_pop(m_state, 1);
-  return runtime::Result<void, std::string>::ok();
-}
-
-void LuaEngine::add_build_step() noexcept {
-  {
-    const runtime::Result result = add_build_step_impl();
-    if (result.is_ok()) {
-      return;
-    }
-
-    lua_pushstring(m_state, result.error_value().c_str());
-  }
-
-  // This call does longjmp, which breaks destructors of data types, since they
-  // do not get executed. That's why the data above is in a different block
-  lua_error(m_state);
-}
-
-runtime::Result<void, std::string>
-LuaEngine::add_build_step_with_rule_impl() noexcept {
-  if (lua_gettop(m_state) != 2) {
-    return runtime::Result<void, std::string>::error(std::format(
-        "Expected 2 arguments to add_build_step_with_rule, but got: {}",
-        lua_gettop(m_state)));
-  }
-
-  const ninja::BuildRule rule =
-      RESULT_PROPAGATE(parse_lua_object<ninja::BuildRule>(m_state));
-  if (m_build_rules.find(rule.name) == m_build_rules.cend()) {
-    m_build_rules.insert(std::pair{rule.name, rule});
-    yabt_verbose("Registered build rule: {}", rule.name);
-  }
-
-  lua_pop(m_state, 1);
-
-  const ninja::BuildStepWithRule step =
-      RESULT_PROPAGATE(parse_lua_object<ninja::BuildStepWithRule>(m_state));
-  if (step.outs.size() == 0) {
-    return runtime::Result<void, std::string>::error(
-        "Attempted to register build_steps_with_rule without an out");
-  }
-
-  m_build_steps_with_rule.push_back(step);
-  yabt_verbose("Registered build step for: {} with rule: {}", step.outs[0],
-               step.rule_name);
-
-  for (const std::string &out : step.outs) {
-    m_leaf_paths.insert(out);
-  }
-  for (const std::string &in : step.ins) {
-    m_leaf_paths.erase(in);
-  }
-
-  lua_pop(m_state, 1);
-
-  return runtime::Result<void, std::string>::ok();
-}
-
-void LuaEngine::add_build_step_with_rule() noexcept {
-  {
-    const runtime::Result result = add_build_step_with_rule_impl();
-    if (result.is_ok()) {
-      return;
-    }
-
-    lua_pushstring(m_state, result.error_value().c_str());
-  }
-
-  // This call does longjmp, which breaks destructors of data types, since they
-  // do not get executed. That's why the data above is in a different block
-  lua_error(m_state);
-}
-
-int LuaEngine::handle_target() noexcept {
-  if (lua_gettop(m_state) != 3) {
-    lua_pushstring(
-        m_state,
-        std::format("Unexpected number of arguments for handle_target: {}",
-                    lua_gettop(m_state))
-            .c_str());
-    lua_error(m_state);
-  }
-
-  if (!lua_isstring(m_state, 1) || !lua_isstring(m_state, 2)) {
-    lua_pushstring(
-        m_state,
-        std::format("handle_target expects 2 strings, but got {} and {}",
-                    lua_typename(m_state, lua_type(m_state, 1)),
-                    lua_typename(m_state, lua_type(m_state, 2)))
-            .c_str());
-    lua_error(m_state);
-  }
-
-  const char *target_spec_path = lua_tolstring(m_state, 1, nullptr);
-  const char *target_name = lua_tolstring(m_state, 2, nullptr);
-  m_current_target = std::format("//{}/{}", target_spec_path, target_name);
-  m_leaf_paths = std::set<std::string>{};
-
-  if (lua_pcall(m_state, 0, 0, 0) != 0 /* LUA_OK */) {
-    lua_remove(m_state, 1);
-    lua_pushboolean(m_state, false);
-    lua_replace(m_state, -3);
-    return 2;
-  }
-
-  std::vector<std::string> leafs{};
-  for (const std::string &leaf : m_leaf_paths) {
-    leafs.push_back(leaf);
-  }
-
-  // We only expose public targets (start with uppercase)
-  const bool public_target =
-      strlen(target_name) != 0 && std::isupper(target_name[0]);
-  if (public_target) {
-    m_build_steps_with_rule.push_back({
-        .outs = std::vector{m_current_target},
-        .ins = leafs,
-        .rule_name = "phony",
-        .variables{},
-    });
-    m_all_targets.push_back(m_current_target);
-  }
-
-  m_current_target = "";
-
-  lua_pop(m_state, 2);
-  lua_pushboolean(m_state, true);
-  lua_pushnil(m_state); // Just to keep the return values balanced
-  return 2;
-}
-
 int LuaEngine::do_yabt_preload() noexcept {
   const char *req = lua_tostring(m_state, 1);
   yabt_verbose("do_yabt_preload: Loading file: {}", req);
@@ -417,9 +232,9 @@ int LuaEngine::do_yabt_preload() noexcept {
 }
 
 [[nodiscard]] runtime::Result<void, std::string>
-LuaEngine::register_module(const std::string &name,
-                           const std::filesystem::path &path,
-                           std::span<const std::string> target_specs) noexcept {
+LuaEngine::register_yabt_module(
+    const std::string &name, const std::filesystem::path &path,
+    std::span<const std::string> target_specs) noexcept {
   StackGuard g{m_state};
   runtime::check(lua_checkstack(m_state, 4), "Exceeded maximum Lua stack size");
 
@@ -450,26 +265,6 @@ LuaEngine::register_module(const std::string &name,
 
   lua_pop(m_state, 1); // the modules global
   return runtime::Result<void, std::string>::ok();
-}
-
-[[nodiscard]] std::span<const ninja::BuildStep>
-LuaEngine::build_steps() const noexcept {
-  return m_build_steps;
-}
-
-[[nodiscard]] std::span<const ninja::BuildStepWithRule>
-LuaEngine::build_steps_with_rule() const noexcept {
-  return m_build_steps_with_rule;
-}
-
-[[nodiscard]] const std::map<std::string, ninja::BuildRule> &
-LuaEngine::build_rules() const noexcept {
-  return m_build_rules;
-}
-
-[[nodiscard]] std::span<const std::string>
-LuaEngine::all_targets() const noexcept {
-  return m_all_targets;
 }
 
 } // namespace yabt::lua

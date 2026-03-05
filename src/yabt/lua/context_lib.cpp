@@ -1,0 +1,257 @@
+#include "yabt/lua/context_lib.h"
+
+#include <cstring>
+
+#include "yabt/log/log.h"
+#include "yabt/lua/utils.h"
+
+namespace yabt::lua {
+
+namespace {
+
+int registry_key;
+
+void init_registry(lua_State *const L, ContextLib *data) {
+  if (L == nullptr) {
+    return;
+  }
+  StackGuard g{L};
+  lua_pushlightuserdata(L, &registry_key);
+  lua_pushlightuserdata(L, data);
+  lua_settable(L, LUA_REGISTRYINDEX);
+}
+
+ContextLib *get_lib_from_registry(lua_State *const L) {
+  lua_pushlightuserdata(L, &registry_key);
+  lua_gettable(L, LUA_REGISTRYINDEX);
+  ContextLib *lib = static_cast<ContextLib *>(lua_touserdata(L, -1));
+  lua_pop(L, 1);
+  return lib;
+}
+
+runtime::Result<void, std::string>
+add_build_step_impl(ContextLib &lib) noexcept {
+  if (lua_gettop(lib.state) != 1) {
+    return runtime::Result<void, std::string>::error(
+        std::format("Expected 1 argument to add_build_step, but got: {}",
+                    lua_gettop(lib.state)));
+  }
+
+  const ninja::BuildStep step =
+      RESULT_PROPAGATE(parse_lua_object<ninja::BuildStep>(lib.state));
+  lib.build_steps.push_back(step);
+  if (step.outs.size() == 0) {
+    return runtime::Result<void, std::string>::error(
+        "Attempted to register build_step without an out");
+  }
+  yabt_verbose("Registered build step for: {} with cmd: {}", step.outs[0].path,
+               step.cmd);
+
+  for (const OutPath &out : step.outs) {
+    lib.leaf_paths.insert(out.path);
+  }
+  for (const Path &in : step.ins) {
+    lib.leaf_paths.erase(in.path);
+  }
+
+  lua_pop(lib.state, 1);
+  return runtime::Result<void, std::string>::ok();
+}
+
+void add_build_step(ContextLib &lib) noexcept {
+  {
+    const runtime::Result result = add_build_step_impl(lib);
+    if (result.is_ok()) {
+      return;
+    }
+
+    lua_pushstring(lib.state, result.error_value().c_str());
+  }
+
+  // This call does longjmp, which breaks destructors of data types, since they
+  // do not get executed. That's why the data above is in a different block
+  lua_error(lib.state);
+}
+
+int l_add_build_step(lua_State *const L) noexcept {
+  StackGuard g{L, -1}; // 1 input arg, 0 outputs
+  ContextLib *const lib = get_lib_from_registry(L);
+  runtime::check(lib != nullptr, "Context lib is NULL");
+  add_build_step(*lib);
+  return 0;
+}
+
+runtime::Result<void, std::string>
+add_build_step_with_rule_impl(ContextLib &lib) noexcept {
+  if (lua_gettop(lib.state) != 2) {
+    return runtime::Result<void, std::string>::error(std::format(
+        "Expected 2 arguments to add_build_step_with_rule, but got: {}",
+        lua_gettop(lib.state)));
+  }
+
+  const ninja::BuildRule rule =
+      RESULT_PROPAGATE(parse_lua_object<ninja::BuildRule>(lib.state));
+  if (lib.build_rules.find(rule.name) == lib.build_rules.cend()) {
+    lib.build_rules.insert(std::pair{rule.name, rule});
+    yabt_verbose("Registered build rule: {}", rule.name);
+  }
+
+  lua_pop(lib.state, 1);
+
+  const ninja::BuildStepWithRule step =
+      RESULT_PROPAGATE(parse_lua_object<ninja::BuildStepWithRule>(lib.state));
+  if (step.outs.size() == 0) {
+    return runtime::Result<void, std::string>::error(
+        "Attempted to register build_steps_with_rule without an out");
+  }
+
+  lib.build_steps_with_rule.push_back(step);
+  yabt_verbose("Registered build step for: {} with rule: {}", step.outs[0].path,
+               step.rule_name);
+
+  for (const OutPath &out : step.outs) {
+    lib.leaf_paths.insert(out.path);
+  }
+  for (const Path &in : step.ins) {
+    lib.leaf_paths.erase(in.path);
+  }
+
+  lua_pop(lib.state, 1);
+
+  return runtime::Result<void, std::string>::ok();
+}
+
+void add_build_step_with_rule(ContextLib &lib) noexcept {
+  {
+    const runtime::Result result = add_build_step_with_rule_impl(lib);
+    if (result.is_ok()) {
+      return;
+    }
+
+    lua_pushstring(lib.state, result.error_value().c_str());
+  }
+
+  // This call does longjmp, which breaks destructors of data types, since they
+  // do not get executed. That's why the data above is in a different block
+  lua_error(lib.state);
+}
+
+int l_add_build_step_with_rule(lua_State *const L) noexcept {
+  StackGuard g{L, -2}; // 2 input args, 0 outputs
+  ContextLib *const lib = get_lib_from_registry(L);
+  runtime::check(lib != nullptr, "Context lib is NULL");
+  add_build_step_with_rule(*lib);
+  return 0;
+}
+
+int handle_target(ContextLib &lib) noexcept {
+  if (lua_gettop(lib.state) != 3) {
+    lua_pushstring(
+        lib.state,
+        std::format("Unexpected number of arguments for handle_target: {}",
+                    lua_gettop(lib.state))
+            .c_str());
+    lua_error(lib.state);
+  }
+
+  if (!lua_isstring(lib.state, 1) || !lua_isstring(lib.state, 2)) {
+    lua_pushstring(
+        lib.state,
+        std::format("handle_target expects 2 strings, but got {} and {}",
+                    lua_typename(lib.state, lua_type(lib.state, 1)),
+                    lua_typename(lib.state, lua_type(lib.state, 2)))
+            .c_str());
+    lua_error(lib.state);
+  }
+
+  const char *target_spec_path = lua_tolstring(lib.state, 1, nullptr);
+  const char *target_name = lua_tolstring(lib.state, 2, nullptr);
+  lib.current_target = std::format("//{}/{}", target_spec_path, target_name);
+  lib.leaf_paths = std::set<std::string>{};
+
+  if (lua_pcall(lib.state, 0, 0, 0) != 0 /* LUA_OK */) {
+    lua_remove(lib.state, 1);
+    lua_pushboolean(lib.state, false);
+    lua_replace(lib.state, -3);
+    return 2;
+  }
+
+  std::vector<Path> leaves{};
+  for (const std::string &leaf : lib.leaf_paths) {
+    leaves.push_back(Path{leaf});
+  }
+
+  // We only expose public targets (start with uppercase)
+  const bool public_target =
+      strlen(target_name) != 0 && std::isupper(target_name[0]);
+  if (public_target) {
+    lib.build_steps_with_rule.push_back({
+        .outs = std::vector{OutPath{lib.current_target}},
+        .ins = leaves,
+        .rule_name = "phony",
+        .variables{},
+    });
+    lib.all_targets.push_back(lib.current_target);
+  }
+
+  lib.current_target = "";
+
+  lua_pop(lib.state, 2);
+  lua_pushboolean(lib.state, true);
+  lua_pushnil(lib.state); // Just to keep the return values balanced
+  return 2;
+}
+
+int l_handle_target(lua_State *const L) noexcept {
+  StackGuard g{L, -1}; // 3 input args, 2 output args
+  ContextLib *const lib = get_lib_from_registry(L);
+  runtime::check(lib != nullptr, "Context lib is NULL");
+  return handle_target(*lib);
+}
+
+static const luaL_Reg context_functions[]{
+    {"add_build_step", l_add_build_step},                     //
+    {"add_build_step_with_rule", l_add_build_step_with_rule}, //
+    {"handle_target", l_handle_target},                       //
+    {nullptr, nullptr},                                       //
+};
+
+static constexpr const char CONTEXT_PACKAGE_NAME[] = "yabt.core.context";
+
+} // namespace
+
+ContextLib::ContextLib(ContextLib &&other) noexcept
+    : build_steps{std::move(other.build_steps)},
+      build_steps_with_rule{std::move(other.build_steps_with_rule)},
+      build_rules{std::move(other.build_rules)},
+      all_targets{std::move(other.all_targets)},
+
+      state{other.state}, current_target{std::move(other.current_target)},
+      leaf_paths{std::move(other.leaf_paths)} {
+  init_registry(state, this);
+}
+
+ContextLib &ContextLib::operator=(ContextLib &&other) noexcept {
+  if (this != &other) {
+    build_steps = std::move(other.build_steps);
+    build_steps_with_rule = std::move(other.build_steps_with_rule);
+    build_rules = std::move(other.build_rules);
+    all_targets = std::move(other.all_targets);
+
+    state = {other.state};
+    current_target = std::move(other.current_target);
+    leaf_paths = std::move(other.leaf_paths);
+    init_registry(state, this);
+  }
+  return *this;
+}
+
+void ContextLib::register_in_engine(lua_State *const L) noexcept {
+  state = L;
+  StackGuard g{L};
+  luaL_register(L, CONTEXT_PACKAGE_NAME, context_functions);
+  lua_pop(L, 1);
+  init_registry(L, this);
+}
+
+} // namespace yabt::lua

@@ -38,8 +38,9 @@ build_inner(const int threads, const bool compdb,
       req_build_dir.value_or(ws_root.value() / workspace::BUILD_DIR_NAME));
 
   auto modules = RESULT_PROPAGATE(workspace::open_workspace(ws_root.value()));
+  auto lua_modules = build::construct_lua_modules(ws_root.value(), build_dir);
   auto lua_engine = RESULT_PROPAGATE(
-      build::prepare_lua_engine(ws_root.value(), build_dir, modules));
+      build::prepare_lua_engine(ws_root.value(), *lua_modules, modules));
   RESULT_PROPAGATE_DISCARD(
       build::invoke_rule_initializers(lua_engine, modules));
   RESULT_PROPAGATE_DISCARD(build::invoke_build_targets(lua_engine, modules));
@@ -47,13 +48,14 @@ build_inner(const int threads, const bool compdb,
   const std::filesystem::path ninja_file =
       build_dir / workspace::NINJA_FILE_PATH;
 
-  RESULT_PROPAGATE_DISCARD(ninja::save_ninja_file(
-      ninja_file, lua_engine.build_rules(), lua_engine.build_steps(),
-      lua_engine.build_steps_with_rule()));
+  RESULT_PROPAGATE_DISCARD(
+      ninja::save_ninja_file(ninja_file, lua_modules->contextlib.build_rules,
+                             lua_modules->contextlib.build_steps,
+                             lua_modules->contextlib.build_steps_with_rule));
 
   if (compdb) {
     std::vector<std::string> compdb_rules;
-    for (const auto &[name, rule] : lua_engine.build_rules()) {
+    for (const auto &[name, rule] : lua_modules->contextlib.build_rules) {
       if (rule.compdb) {
         compdb_rules.push_back(name);
       }
@@ -81,7 +83,7 @@ build_inner(const int threads, const bool compdb,
   }
 
   std::vector<std::string> targets{};
-  for (const std::string &target : lua_engine.all_targets()) {
+  for (const std::string &target : lua_modules->contextlib.all_targets) {
     for (const std::regex &regex : patterns) {
       if (std::regex_match(target, regex)) {
         targets.push_back(target);
