@@ -4,6 +4,7 @@
 #include <span>
 
 #include "yabt/lua/context_lib.h"
+#include "yabt/lua/log_lib.h"
 #include "yabt/lua/lua_engine.h"
 #include "yabt/lua/path_lib.h"
 #include "yabt/module/module.h"
@@ -17,6 +18,7 @@ constexpr static std::string_view INIT_FILE_NAME = "INIT.lua";
 struct LuaModules final {
   lua::PathLib pathlib;
   lua::ContextLib contextlib;
+  lua::LogLib loglib;
 };
 
 [[nodiscard]] std::unique_ptr<LuaModules>

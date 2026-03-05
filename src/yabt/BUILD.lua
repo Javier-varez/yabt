@@ -19,6 +19,7 @@ targets.lib = cc.Library:new {
         'lua/lua_engine.cpp',
         'lua/path_lib.cpp',
         'lua/context_lib.cpp',
+        'lua/log_lib.cpp',
         'module/git_module.cpp',
         'module/module.cpp',
         'module/module_file.cpp',

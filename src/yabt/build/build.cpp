@@ -10,6 +10,7 @@ namespace {
 void register_modules(lua::LuaEngine &engine, LuaModules &modules) noexcept {
   engine.register_lua_module(modules.pathlib);
   engine.register_lua_module(modules.contextlib);
+  engine.register_lua_module(modules.loglib);
 }
 
 } // namespace
@@ -20,6 +21,7 @@ construct_lua_modules(const std::filesystem::path &ws_root,
   return std::make_unique<LuaModules>(LuaModules{
       .pathlib{ws_root, build_dir},
       .contextlib{},
+      .loglib{},
   });
 }
 

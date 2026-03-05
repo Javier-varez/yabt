@@ -10,6 +10,7 @@ SRCS := src/yabt/main.cpp            \
 	src/yabt/lua/lua_engine.cpp      \
 	src/yabt/lua/path_lib.cpp        \
 	src/yabt/lua/context_lib.cpp     \
+	src/yabt/lua/log_lib.cpp         \
 	src/yabt/log/log.cpp             \
 	src/yabt/cmd/build.cpp           \
 	src/yabt/cmd/help.cpp            \

@@ -2,7 +2,6 @@
 
 #include <filesystem>
 
-#include "yabt/log/log.h"
 #include "yabt/lua/utils.h"
 
 #include "lua.hpp"

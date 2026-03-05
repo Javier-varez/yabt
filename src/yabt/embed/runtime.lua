@@ -111,7 +111,7 @@ local function create_targets_table()
     return targets
 end
 
-local yabt_native = require 'yabt_native'
+local log = require 'yabt.core.log'
 local utils = require 'yabt.core.utils'
 local in_progress_builds = {}
 local build_failed = false
@@ -143,7 +143,7 @@ run_sandbox_for_mod = function(target_spec_path)
     table.insert(in_progress_builds, target_spec_path)
     local ok, err = pcall(f)
     if not ok then
-        yabt_native.log_error('Error running file ' .. file_path .. ': ' .. err)
+        log.error('Error running file ' .. file_path .. ': ' .. err)
         build_failed = true
     end
     table.remove(in_progress_builds, #in_progress_builds)
@@ -171,7 +171,7 @@ local function handle_target(target_spec_path, target_name, target)
         end
     end)
     if not ok then
-        yabt_native.log_error('Error executing build for //' .. target_spec_path .. '/' .. target_name .. ': ' .. err)
+        log.error('Error executing build for //' .. target_spec_path .. '/' .. target_name .. ': ' .. err)
         build_failed = true
     end
 end

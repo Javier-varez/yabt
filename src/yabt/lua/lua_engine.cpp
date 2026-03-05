@@ -2,13 +2,10 @@
 #include <format>
 #include <map>
 #include <string>
-#include <vector>
 
 #include "yabt/log/log.h"
 #include "yabt/lua/lua_engine.h"
 #include "yabt/lua/utils.h"
-#include "yabt/ninja/build_rule.h"
-#include "yabt/ninja/build_step.h"
 
 #include "lua.hpp"
 
@@ -43,51 +40,6 @@ int l_do_yabt_preload(lua_State *const L) noexcept {
 
 namespace {
 
-template <log::LogLevel level> int l_log(lua_State *const L) {
-  if (lua_gettop(L) != 1) {
-    lua_pop(L, lua_gettop(L));
-    lua_pushstring(L, "Unexpected number of arguments given to log function");
-    lua_error(L);
-  }
-  if (!lua_isstring(L, -1)) {
-    lua_pop(L, lua_gettop(L));
-    lua_pushstring(L, "Invalid argument type given to log function");
-    lua_error(L);
-  }
-
-  const char *const str = lua_tostring(L, -1);
-  if constexpr (level == log::LogLevel::VERBOSE) {
-    yabt_verbose("{}", str);
-  } else if constexpr (level == log::LogLevel::DEBUG) {
-    yabt_debug("{}", str);
-  } else if constexpr (level == log::LogLevel::INFO) {
-    yabt_info("{}", str);
-  } else if constexpr (level == log::LogLevel::WARNING) {
-    yabt_warn("{}", str);
-  } else if constexpr (level == log::LogLevel::ERROR) {
-    yabt_error("{}", str);
-  }
-  lua_pop(L, 1);
-  return 0;
-}
-
-// TODO: Move to Log module
-static const luaL_Reg yabt_methods[]{
-    {"log_verbose", l_log<log::LogLevel::VERBOSE>},
-    {"log_debug", l_log<log::LogLevel::DEBUG>},
-    {"log_info", l_log<log::LogLevel::INFO>},
-    {"log_warn", l_log<log::LogLevel::WARNING>},
-    {"log_error", l_log<log::LogLevel::ERROR>},
-    {nullptr, nullptr},
-};
-
-void luaopen_yabt(lua_State *const L) noexcept {
-  luaL_register(L, "yabt_native", yabt_methods);
-  lua_pop(L, 1);
-
-  runtime::check(lua_checkstack(L, 2), "Exceeded maximum Lua stack size");
-}
-
 void init_modules_global(lua_State *const L) noexcept {
   runtime::check(lua_checkstack(L, 1), "Exceeded maximum Lua stack size");
   lua_newtable(L);
@@ -110,7 +62,6 @@ LuaEngine::construct(const std::filesystem::path &workspace_root) noexcept {
   }
 
   luaL_openlibs(engine.m_state);
-  luaopen_yabt(engine.m_state);
 
   init_registry(engine.m_state, &engine);
   set_package_path(engine.m_state, "");
