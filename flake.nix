@@ -21,6 +21,40 @@
 
     in
     {
+      packages = forEachSystem (
+        system:
+        let
+          pkgs = import nixpkgs {
+            inherit system;
+          };
+        in
+        rec {
+          yabt = pkgs.stdenv.mkDerivation {
+            pname = "yabt";
+            version = "0.0.1";
+
+            src = ./.;
+
+            buildInputs = with pkgs; [
+              gcc
+              (luajit.withPackages (ps: with ps; [ busted ]))
+              pkg-config
+              gnumake
+            ];
+            nativeBuildInputs = with pkgs; [
+              ninja
+              git
+            ];
+            buildPhase = ''
+              make -j$(nproc)
+            '';
+            installPhase = ''
+              install -m 0755 build/yabt $out
+            '';
+          };
+          default = yabt;
+        }
+      );
       devShells = forEachSystem (
         system:
         let
@@ -29,7 +63,7 @@
           };
         in
         rec {
-          vds = pkgs.mkShell {
+          yabt = pkgs.mkShell {
             nativeBuildInputs = with pkgs; [
               # build deps (busted is needed for testing)
               gcc
@@ -46,7 +80,7 @@
             ];
           };
 
-          default = vds;
+          default = yabt;
         }
       );
     };
