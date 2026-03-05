@@ -31,11 +31,14 @@
         rec {
           vds = pkgs.mkShell {
             nativeBuildInputs = with pkgs; [
-              gcc
-
               # build deps (busted is needed for testing)
+              gcc
               (luajit.withPackages (ps: with ps; [ busted ]))
               pkg-config
+
+              # Runtime deps
+              ninja
+              git
 
               # dev tools
               bear
