@@ -109,7 +109,7 @@ runtime::Result<lua::LuaEngine, std::string> prepare_lua_engine(
         engine.register_yabt_module(mod->name(), mod_dir, target_specs));
   }
 
-  return engine.exec_string(embed::get_runtime_file());
+  return engine.exec_string(std::string{embed::get_runtime_file()}.c_str());
 }
 
 } // namespace yabt::build

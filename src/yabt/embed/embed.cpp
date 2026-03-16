@@ -1,24 +1,37 @@
+#include <bit>
+#include <cstdint>
+
 #include "yabt/embed/embed.h"
+
+extern "C" {
+extern uint8_t _binary_yabt_embed_runtime_lua_size[1];
+extern uint8_t _binary_yabt_embed_runtime_lua_start[1];
+
+extern uint8_t _binary_yabt_embed_rules_yabt_core_utils_lua_size[1];
+extern uint8_t _binary_yabt_embed_rules_yabt_core_utils_lua_start[1];
+}
 
 namespace yabt::embed {
 
-namespace {
-constexpr static const char runtime_file[] = {
-#embed "runtime.lua"
-    , '\0'};
+[[nodiscard]] std::string_view get_runtime_file() noexcept {
+  const size_t size =
+      std::bit_cast<uintptr_t>(&_binary_yabt_embed_runtime_lua_size[0]);
+  const char *start =
+      std::bit_cast<const char *>(&_binary_yabt_embed_runtime_lua_start[0]);
+  return std::string_view{start, size};
+}
 
-constexpr static const char core_utils_file[] = {
-#embed "rules/yabt/core/utils.lua"
-    , '\0'};
-
-} // namespace
-
-[[nodiscard]] const char *get_runtime_file() noexcept { return runtime_file; }
-
-[[nodiscard]] std::map<std::string, const char *>
+[[nodiscard]] std::map<std::string, std::string_view>
 get_embedded_lua_rules() noexcept {
-  std::map<std::string, const char *> preloads;
-  preloads.insert(std::make_pair("yabt.core.utils", core_utils_file));
+  std::map<std::string, std::string_view> preloads;
+  {
+    const size_t size = std::bit_cast<uintptr_t>(
+        &_binary_yabt_embed_rules_yabt_core_utils_lua_size[0]);
+    const char *start = std::bit_cast<const char *>(
+        &_binary_yabt_embed_rules_yabt_core_utils_lua_start[0]);
+    std::string_view sv{start, size};
+    preloads.insert(std::make_pair("yabt.core.utils", sv));
+  }
   return preloads;
 }
 

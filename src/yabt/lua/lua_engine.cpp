@@ -132,7 +132,7 @@ LuaEngine::exec_file(std::string_view file_path) noexcept {
 }
 
 void LuaEngine::set_preloaded_lua_packages(
-    std::map<std::string, const char *> packages) noexcept {
+    std::map<std::string, std::string_view> packages) noexcept {
   m_preloaded_packages = std::move(packages);
   StackGuard g{m_state};
 
@@ -169,7 +169,7 @@ int LuaEngine::do_yabt_preload() noexcept {
     yabt_warn("do_yabt_preload: {} Not found", req);
     return 0;
   }
-  const std::string &lua_src = m_preloaded_packages[req];
+  const std::string lua_src{m_preloaded_packages[req]};
   lua_pop(m_state, 1);
 
   if (luaL_loadstring(m_state, lua_src.c_str())) {

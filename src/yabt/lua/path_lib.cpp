@@ -109,6 +109,27 @@ template <typename PathParams> struct PathImpl final {
     return 1;
   }
 
+  [[nodiscard]] static int l_relative_to(lua_State *const L) noexcept {
+    const PathLib *const pathlib = get_lib_from_registry(L);
+    runtime::check(pathlib != nullptr,
+                   "get_lib_from_registry returned nullptr!");
+
+    StackGuard g{L, -1};
+    std::filesystem::path *path = static_cast<std::filesystem::path *>(
+        luaL_checkudata(L, 1, PathParams::METATABLE));
+    luaL_argcheck(L, path != nullptr, 1, "path expected");
+
+    std::filesystem::path *base = static_cast<std::filesystem::path *>(
+        luaL_checkudata(L, 2, PathParams::METATABLE));
+    luaL_argcheck(L, base != nullptr, 1, "path expected");
+
+    const std::filesystem::path relative =
+        std::filesystem::relative(*path, *base);
+    lua_pop(L, 2);
+    lua_pushstring(L, relative.c_str());
+    return 1;
+  }
+
   [[nodiscard]] static int l_ext(lua_State *const L) noexcept {
     StackGuard g{L};
     std::filesystem::path *ud = static_cast<std::filesystem::path *>(
@@ -156,12 +177,13 @@ template <typename PathParams> struct PathImpl final {
   };
 
   constexpr static struct luaL_Reg instance_table[] = {
-      {"absolute", l_absolute}, //
-      {"relative", l_relative}, //
-      {"ext", l_ext},           //
-      {"with_ext", l_with_ext}, //
-      {"__gc", l_gc},           //
-      {nullptr, nullptr},       //
+      {"absolute", l_absolute},       //
+      {"relative", l_relative},       //
+      {"relative_to", l_relative_to}, //
+      {"ext", l_ext},                 //
+      {"with_ext", l_with_ext},       //
+      {"__gc", l_gc},                 //
+      {nullptr, nullptr},             //
   };
 
   static void register_lib(lua_State *const L) noexcept {
