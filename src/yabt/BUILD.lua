@@ -1,8 +1,11 @@
 local cc = require 'yabt_cc_rules.cc'
-
 local pkg_config = require 'yabt_cc_rules.pkg-config'
+
 local cxxflags = pkg_config.get_compile_flags('luajit')
 local ldflags = pkg_config.get_link_flags('luajit')
+
+local embed = import 'yabt/embed'
+local rules = import 'yabt/embed/rules'
 
 targets.lib = cc.Library:new {
     out = out('yabt.a'),
@@ -39,6 +42,8 @@ targets.Bin = cc.Binary:new {
     ),
     deps = {
         targets.lib,
+        embed.Blob,
+        rules.Utils,
     },
     cxxflags = cxxflags,
     ldflags_post = ldflags,

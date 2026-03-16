@@ -36,7 +36,7 @@ public:
 
   // TODO: Move to preload module
   void set_preloaded_lua_packages(
-      std::map<std::string, const char *> packages) noexcept;
+      std::map<std::string, std::string_view> packages) noexcept;
 
   // TODO: Move to runtime lua module
   [[nodiscard]] runtime::Result<void, std::string>
@@ -61,7 +61,7 @@ private:
   lua_State *m_state;
   std::optional<PathLib> m_pathlib;
   std::filesystem::path m_workspace_root;
-  std::map<std::string, const char *> m_preloaded_packages;
+  std::map<std::string, std::string_view> m_preloaded_packages;
   std::string m_current_target;
   std::set<std::string> m_leaf_paths;
 
