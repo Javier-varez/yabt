@@ -21,8 +21,8 @@ validate_flag(const Flag &flag, std::string_view name, std::string_view value) {
     }
 
     return Result::ok(std::make_pair(flag, Arg{StringArg{
-                                               .name{name},
-                                               .value{value},
+                                               .name{std::string{name}},
+                                               .value{std::string{value}},
                                            }}));
   }
   case FlagType::BOOL: {
@@ -32,7 +32,7 @@ validate_flag(const Flag &flag, std::string_view name, std::string_view value) {
     }
 
     return Result::ok(std::make_pair(flag, Arg{BoolArg{
-                                               .name{name},
+                                               .name{std::string{name}},
                                            }}));
   }
   case FlagType::INTEGER: {
@@ -43,7 +43,7 @@ validate_flag(const Flag &flag, std::string_view name, std::string_view value) {
     const long long integer = std::strtoll(value.data(), nullptr, 0);
 
     return Result::ok(std::make_pair(flag, Arg{IntegerArg{
-                                               .name{name},
+                                               .name{std::string{name}},
                                                .value = integer,
                                            }}));
   }
