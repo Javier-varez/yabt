@@ -7,10 +7,8 @@ on:
     branches: [ "main" ]
 
 jobs:
-  bootstrap:
-
+  nix-build:
     runs-on: ubuntu-latest
-
     steps:
     - uses: actions/checkout@v4
     - uses: cachix/install-nix-action@v31
@@ -19,3 +17,12 @@ jobs:
         nix_path: nixpkgs=channel:nixos-unstable
     - name: build
       run: nix build .
+
+  bootstrap:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: install deps
+      run: sudo apt update && sudo apt install -y libluajit-5.1-dev pkg-config ninja-build git
+    - name: build
+      run: ./bootstrap.sh
