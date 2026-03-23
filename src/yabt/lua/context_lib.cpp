@@ -209,14 +209,92 @@ int l_handle_target(lua_State *const L) noexcept {
   return handle_target(*lib);
 }
 
+int l_register_run_fn(lua_State *const L) noexcept {
+  StackGuard g{L, -1}; // 1 input arg, 0 outputs (luaL_ref pops the value)
+  ContextLib *const lib = get_lib_from_registry(L);
+  runtime::check(lib != nullptr, "Context lib is NULL");
+  if (lua_gettop(L) != 1 || !lua_isfunction(L, 1)) {
+    lua_pushstring(L, "register_run_fn expects a single function argument");
+    lua_error(L);
+  }
+  const int ref = luaL_ref(L, LUA_REGISTRYINDEX); // pops the function
+  runtime::check(lib->current_target.size() > 0,
+                 "No current target while registering a run function");
+  lib->run_fn_refs[lib->current_target] = ref;
+  return 0;
+}
+
+int l_register_test_fn(lua_State *const L) noexcept {
+  StackGuard g{L, -1}; // 1 input arg, 0 outputs (luaL_ref pops the value)
+  ContextLib *const lib = get_lib_from_registry(L);
+  runtime::check(lib != nullptr, "Context lib is NULL");
+  if (lua_gettop(L) != 1 || !lua_isfunction(L, 1)) {
+    lua_pushstring(L, "register_test_fn expects a single function argument");
+    lua_error(L);
+  }
+  const int ref = luaL_ref(L, LUA_REGISTRYINDEX); // pops the function
+  runtime::check(lib->current_target.size() > 0,
+                 "No current target while registering a test function");
+  lib->test_fn_refs[lib->current_target] = ref;
+  return 0;
+}
+
 static const luaL_Reg context_functions[]{
     {"add_build_step", l_add_build_step},                     //
     {"add_build_step_with_rule", l_add_build_step_with_rule}, //
     {"handle_target", l_handle_target},                       //
+    {"register_run_fn", l_register_run_fn},                   //
+    {"register_test_fn", l_register_test_fn},                 //
     {nullptr, nullptr},                                       //
 };
 
 static constexpr const char CONTEXT_PACKAGE_NAME[] = "yabt.core.context";
+
+runtime::Result<std::vector<std::string>, std::string>
+call_fn_impl(lua_State *const L, const std::map<std::string, int> &fn_refs,
+             const std::string_view method_name, const std::string &target,
+             std::span<const std::string_view> args) noexcept {
+  const auto fn_ref_iter = fn_refs.find(target);
+  if (fn_ref_iter == fn_refs.cend()) {
+    return runtime::Result<std::vector<std::string>, std::string>::error(
+        std::format("Target {} has no {}() method", target, method_name));
+  }
+
+  lua_rawgeti(L, LUA_REGISTRYINDEX, fn_ref_iter->second);
+
+  // Setup a table to pass the args to the function
+  lua_newtable(L);
+  for (size_t i = 0; i < args.size(); i++) {
+    lua_pushstring(L, std::string{args[i]}.c_str());
+    lua_rawseti(L, -2, static_cast<int>(i) + 1);
+  }
+
+  if (lua_pcall(L, 1, 1, 0) != 0) {
+    const std::string err{lua_tostring(L, -1)};
+    lua_pop(L, 1);
+    return runtime::Result<std::vector<std::string>, std::string>::error(
+        std::format("{}() for target {} failed: {}", method_name, target, err));
+  }
+
+  if (!lua_istable(L, -1)) {
+    lua_pop(L, 1);
+    return runtime::Result<std::vector<std::string>, std::string>::error(
+        std::format("{}() for target {} must return a table", method_name,
+                    target));
+  }
+
+  auto result = RESULT_PROPAGATE(parse_lua_object<std::vector<std::string>>(L));
+  lua_pop(L, 1);
+
+  if (result.empty()) {
+    return runtime::Result<std::vector<std::string>, std::string>::error(
+        std::format("{}() for target {} returned empty table", method_name,
+                    target));
+  }
+
+  return runtime::Result<std::vector<std::string>, std::string>::ok(
+      std::move(result));
+}
 
 } // namespace
 
@@ -225,6 +303,8 @@ ContextLib::ContextLib(ContextLib &&other) noexcept
       build_steps_with_rule{std::move(other.build_steps_with_rule)},
       build_rules{std::move(other.build_rules)},
       all_targets{std::move(other.all_targets)},
+      run_fn_refs{std::move(other.run_fn_refs)},
+      test_fn_refs{std::move(other.test_fn_refs)},
 
       state{other.state}, current_target{std::move(other.current_target)},
       leaf_paths{std::move(other.leaf_paths)} {
@@ -237,6 +317,8 @@ ContextLib &ContextLib::operator=(ContextLib &&other) noexcept {
     build_steps_with_rule = std::move(other.build_steps_with_rule);
     build_rules = std::move(other.build_rules);
     all_targets = std::move(other.all_targets);
+    run_fn_refs = std::move(other.run_fn_refs);
+    test_fn_refs = std::move(other.test_fn_refs);
 
     state = {other.state};
     current_target = std::move(other.current_target);
@@ -252,6 +334,18 @@ void ContextLib::register_in_engine(lua_State *const L) noexcept {
   luaL_register(L, CONTEXT_PACKAGE_NAME, context_functions);
   lua_pop(L, 1);
   init_registry(L, this);
+}
+
+runtime::Result<std::vector<std::string>, std::string>
+ContextLib::call_run_fn(const std::string &target,
+                        std::span<const std::string_view> args) noexcept {
+  return call_fn_impl(state, run_fn_refs, "run", target, args);
+}
+
+runtime::Result<std::vector<std::string>, std::string>
+ContextLib::call_test_fn(const std::string &target,
+                         std::span<const std::string_view> args) noexcept {
+  return call_fn_impl(state, test_fn_refs, "test", target, args);
 }
 
 } // namespace yabt::lua
