@@ -187,6 +187,7 @@ CliParser::register_flag(Flag config) noexcept {
 CliParser::parse(const size_t argc, const char *argv[]) const noexcept {
   // Parse global flags
   size_t arg_idx = 1;
+  std::vector<std::string_view> seen_global_flags;
   for (; arg_idx < argc; arg_idx++) {
     std::string_view sv{argv[arg_idx]};
     if (sv.starts_with("--")) {
@@ -195,6 +196,7 @@ CliParser::parse(const size_t argc, const char *argv[]) const noexcept {
       const std::pair<Flag, Arg> arg =
           RESULT_PROPAGATE(parse_long_flag(std::span{m_global_flags}, sv));
 
+      seen_global_flags.push_back(arg.first.name);
       if (arg.first.handler) {
         RESULT_PROPAGATE_DISCARD(arg.first.handler(arg.second));
       }
@@ -207,6 +209,7 @@ CliParser::parse(const size_t argc, const char *argv[]) const noexcept {
       std::vector<std::pair<Flag, Arg>> args =
           RESULT_PROPAGATE(parse_short_flags(std::span{m_global_flags}, sv));
       for (std::pair<Flag, Arg> &arg : args) {
+        seen_global_flags.push_back(arg.first.name);
         if (arg.first.handler) {
           RESULT_PROPAGATE_DISCARD(arg.first.handler(arg.second));
         }
@@ -218,7 +221,15 @@ CliParser::parse(const size_t argc, const char *argv[]) const noexcept {
     break;
   }
 
-  // TODO Check that all non-optional global flags were given
+  for (const Flag &flag : m_global_flags) {
+    if (!flag.optional && flag.type != FlagType::BOOL) {
+      if (std::find(seen_global_flags.begin(), seen_global_flags.end(),
+                    flag.name) == seen_global_flags.end()) {
+        return runtime::Result<void, std::string>::error(
+            std::format("Missing required global flag: --{}", flag.name));
+      }
+    }
+  }
 
   if (arg_idx >= argc) {
     return runtime::Result<void, std::string>::error(
@@ -240,6 +251,7 @@ CliParser::parse(const size_t argc, const char *argv[]) const noexcept {
   const std::span<const Flag> subcommand_flags = subcommand.flags();
 
   // Parse subcommand flags
+  std::vector<std::string_view> seen_subcommand_flags;
   for (; arg_idx < argc; arg_idx++) {
     std::string_view sv{argv[arg_idx]};
 
@@ -248,6 +260,7 @@ CliParser::parse(const size_t argc, const char *argv[]) const noexcept {
       sv = sv.substr(2);
       const std::pair<Flag, Arg> arg =
           RESULT_PROPAGATE(parse_long_flag(std::span{subcommand_flags}, sv));
+      seen_subcommand_flags.push_back(arg.first.name);
       if (arg.first.handler) {
         RESULT_PROPAGATE_DISCARD(arg.first.handler(arg.second));
       }
@@ -259,6 +272,7 @@ CliParser::parse(const size_t argc, const char *argv[]) const noexcept {
       std::vector<std::pair<Flag, Arg>> args = RESULT_PROPAGATE(
           parse_short_flags(std::span{subcommand_flags}, sv.substr(1)));
       for (std::pair<Flag, Arg> &arg : args) {
+        seen_subcommand_flags.push_back(arg.first.name);
         if (arg.first.handler) {
           RESULT_PROPAGATE_DISCARD(arg.first.handler(arg.second));
         }
@@ -270,7 +284,16 @@ CliParser::parse(const size_t argc, const char *argv[]) const noexcept {
     break;
   }
 
-  // TODO Check that all non-optional subcommand flags were given
+  for (const Flag &flag : subcommand_flags) {
+    if (!flag.optional && flag.type != FlagType::BOOL) {
+      if (std::find(seen_subcommand_flags.begin(), seen_subcommand_flags.end(),
+                    flag.name) == seen_subcommand_flags.end()) {
+        return runtime::Result<void, std::string>::error(
+            std::format("Missing required flag for subcommand \"{}\": --{}",
+                        given_subcommand, flag.name));
+      }
+    }
+  }
 
   std::vector<std::string_view> unparsed_args;
   for (; arg_idx < argc; arg_idx++) {
