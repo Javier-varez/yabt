@@ -5,6 +5,7 @@
 #include "yabt/cmd/clean.h"
 #include "yabt/cmd/help.h"
 #include "yabt/cmd/list.h"
+#include "yabt/cmd/run.h"
 #include "yabt/cmd/sync.h"
 #include "yabt/log/log.h"
 #include "yabt/runtime/check_result.h"
@@ -59,6 +60,7 @@ void register_global_options(yabt::cli::CliParser &cli_parser) {
 
 yabt::cmd::BuildCommand build_cmd;
 yabt::cmd::HelpCommand help_cmd;
+yabt::cmd::RunCommand run_cmd;
 yabt::cmd::SyncCommand sync_cmd;
 yabt::cmd::CleanCommand clean_cmd;
 yabt::cmd::ListCommand list_cmd;
@@ -68,6 +70,8 @@ void register_subcommands(yabt::cli::CliParser &cli_parser) {
                        "Unable to register build command: {}");
   yabt::runtime::check(help_cmd.register_command(cli_parser),
                        "Unable to register help command: {}");
+  yabt::runtime::check(run_cmd.register_command(cli_parser),
+                       "Unable to register run command: {}");
   yabt::runtime::check(sync_cmd.register_command(cli_parser),
                        "Unable to register sync command: {}");
   yabt::runtime::check(clean_cmd.register_command(cli_parser),

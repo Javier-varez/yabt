@@ -20,6 +20,7 @@ const std::string_view SHORT_DESCRIPTION = "Builds the requested targets";
 const std::string_view LONG_DESCRIPTION =
     "Builds requested targets using the specified target spec. A target spec\n"
     "is ... (TBD)";
+} // namespace
 
 [[nodiscard]] runtime::Result<void, std::string>
 build_inner(const int threads, const bool compdb,
@@ -104,8 +105,6 @@ build_inner(const int threads, const bool compdb,
   RESULT_PROPAGATE_DISCARD(ninja.start());
   return ninja.process_output().to_result();
 }
-
-} // namespace
 
 [[nodiscard]] runtime::Result<void, std::string>
 BuildCommand::register_command(cli::CliParser &cli_parser) noexcept {

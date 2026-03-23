@@ -4,7 +4,6 @@
 #include <optional>
 #include <span>
 #include <string>
-#include <string_view>
 
 #include "yabt/cli/cli_parser.h"
 #include "yabt/cli/subcommand.h"
@@ -12,14 +11,9 @@
 
 namespace yabt::cmd {
 
-[[nodiscard]] runtime::Result<void, std::string>
-build_inner(int threads, bool compdb,
-            const std::optional<std::filesystem::path> &req_build_dir,
-            std::span<const std::string_view> target_patterns);
-
-class BuildCommand final : public cli::SubcommandHandler {
+class RunCommand final : public cli::SubcommandHandler {
 public:
-  BuildCommand() noexcept = default;
+  RunCommand() noexcept = default;
 
   [[nodiscard]] runtime::Result<void, std::string>
   register_command(cli::CliParser &parser) noexcept;
@@ -30,7 +24,6 @@ public:
 private:
   int m_threads{0};
   std::optional<std::filesystem::path> m_build_dir{};
-  bool m_compdb{false};
 };
 
 } // namespace yabt::cmd
