@@ -16,6 +16,7 @@ SRCS := src/yabt/main.cpp                      \
     src/yabt/log/log.cpp                       \
     src/yabt/cmd/build.cpp                     \
     src/yabt/cmd/help.cpp                      \
+    src/yabt/cmd/run.cpp                       \
     src/yabt/cmd/sync.cpp                      \
     src/yabt/cmd/clean.cpp                     \
     src/yabt/cmd/list.cpp                      \
