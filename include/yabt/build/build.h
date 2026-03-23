@@ -1,7 +1,11 @@
 #pragma once
 
+#include <filesystem>
 #include <memory>
+#include <optional>
 #include <span>
+#include <string>
+#include <string_view>
 
 #include "yabt/lua/context_lib.h"
 #include "yabt/lua/log_lib.h"
@@ -14,6 +18,15 @@ namespace yabt::build {
 
 constexpr static std::string_view BUILD_FILE_NAME = "BUILD.lua";
 constexpr static std::string_view INIT_FILE_NAME = "INIT.lua";
+
+enum class PostBuildMode { None, Run, Test };
+
+[[nodiscard]] runtime::Result<void, std::string>
+execute_build(int threads, bool compdb,
+              const std::optional<std::filesystem::path> &requested_build_dir,
+              std::span<const std::string_view> target_patterns,
+              PostBuildMode mode = PostBuildMode::None,
+              std::span<const std::string_view> action_args = {});
 
 struct LuaModules final {
   lua::PathLib pathlib;

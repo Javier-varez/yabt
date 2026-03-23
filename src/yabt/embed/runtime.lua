@@ -167,7 +167,12 @@ local function handle_target(target_spec_path, target_name, target)
     local ok, err = ctx.handle_target(target_spec_path, target_name, function()
         if target.build and type(target.build) == 'function' then
             target:build(ctx)
-            -- TODO: handle testable and runnable targets as well
+        end
+        if target.run and type(target.run) == 'function' then
+            ctx.register_run_fn(function(args) return target:run(args) end)
+        end
+        if target.test and type(target.test) == 'function' then
+            ctx.register_test_fn(function(args) return target:test(args) end)
         end
     end)
     if not ok then

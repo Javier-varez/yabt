@@ -17,6 +17,7 @@ targets.lib = cc.Library:new {
         'cmd/help.cpp',
         'cmd/run.cpp',
         'cmd/sync.cpp',
+        'cmd/test.cpp',
         'cmd/clean.cpp',
         'cmd/list.cpp',
         'log/log.cpp',
