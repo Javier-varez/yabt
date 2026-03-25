@@ -9,7 +9,8 @@ LUA_STRUCT_PARSE_SPEC_DEF(                //
     (std::string, url),                   //
     (std::string, version),               //
     (std::string, hash),                  //
-    (std::string, type)                   //
+    (std::string, type),                  //
+    (bool, external)                      //
 );
 
 LUA_STRUCT_PARSE_SPEC_DEF(                 //
