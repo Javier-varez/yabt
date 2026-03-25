@@ -17,6 +17,7 @@ struct DependencyDefinition final {
   std::string version;
   std::string hash;
   std::string type;
+  bool external;
 };
 
 using FlagMap = std::map<std::string, std::string>;
