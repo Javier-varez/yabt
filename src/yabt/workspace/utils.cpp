@@ -128,7 +128,9 @@ sync_workspace(std::filesystem::path ws_root,
       yabt_debug("Pinning dependency {} to {}", dep_name, target_revision);
       yabt_debug("");
 
-      queue.push_back(dep_dir);
+      if (!dep.external) {
+        queue.push_back(dep_dir);
+      }
     }
   }
 
@@ -169,6 +171,11 @@ open_workspace(const std::filesystem::path &ws_root) noexcept {
 
     for (const auto &[dep_name, dep] : modfile.deps) {
       log::IndentGuard _indent_guard{};
+
+      if (dep.external) {
+        yabt_debug("Skipping external dependency {}", dep_name);
+        continue;
+      }
 
       const std::filesystem::path dep_dir = deps_dir / dep_name;
       queue.push_back(dep_dir);

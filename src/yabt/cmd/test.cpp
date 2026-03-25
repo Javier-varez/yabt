@@ -70,6 +70,7 @@ TestCommand::register_command(cli::CliParser &cli_parser) noexcept {
                                build::PostBuildMode::Test, test_args);
       result.is_error()) {
     yabt_error("Test failed: {}", result.error_value());
+    exit(EXIT_FAILURE);
   }
 
   return runtime::Result<void, std::string>::ok();

@@ -68,6 +68,7 @@ BuildCommand::handle_subcommand(
           m_threads, m_compdb, m_build_dir, target_patterns);
       result.is_error()) {
     yabt_error("Build failed: {}", result.error_value());
+    exit(EXIT_FAILURE);
   }
 
   return runtime::Result<void, std::string>::ok();

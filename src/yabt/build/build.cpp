@@ -225,6 +225,11 @@ execute_build(const int threads, const bool compdb,
         exec_argv = RESULT_PROPAGATE(
             lua_modules->contextlib.call_run_fn(target, action_args));
       } else if (mode == PostBuildMode::Test) {
+        // FIXME: This should be handled inside call_run_fn and call_test_fn
+        if (!lua_modules->contextlib.test_fn_refs.contains(target)) {
+          yabt_debug("Skipping {} (no test function registered)", target);
+          continue;
+        }
         yabt_verbose("Collecting test arguments for {}", target);
         exec_argv = RESULT_PROPAGATE(
             lua_modules->contextlib.call_test_fn(target, action_args));
