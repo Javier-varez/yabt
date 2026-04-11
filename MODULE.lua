@@ -5,7 +5,7 @@ return {
         yabt_cc_rules = {
             url = 'https://github.com/Javier-varez/yabt_cc_rules.git',
             version = 'origin/main',
-            hash = '032905ab07bba6c0bc194f0447a7ca514f4e48b9',
+            hash = '1addd32937123a41d2a400612952f272b40975f6',
         }
     }
 }

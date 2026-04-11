@@ -51,6 +51,14 @@ DEPFILES := $(OBJECTS:%=%.d)
 
 TARGET_ARCH ?= $(shell uname -m)
 
+ifeq ($(TARGET_ARCH),x86_64)
+LD_ARCH := elf_x86_64
+else ifeq ($(TARGET_ARCH),aarch64)
+LD_ARCH := aarch64linux
+else
+$(error Unsupported architecture: $(TARGET_ARCH))
+endif
+
 all: $(BUILD_DIR)/$(TARGET_NAME)
 .PHONY: all
 
@@ -69,6 +77,6 @@ $(BUILD_DIR)/$(TARGET_NAME): $(OBJECTS) $(THIS_FILE)
 $(BUILD_DIR)/%.lua.o: SRC_DIR := $(realpath $(dir $(THIS_FILE)))/src
 $(BUILD_DIR)/%.lua.o: %.lua $(THIS_FILE)
 	@mkdir -p $(dir $@)
-	cd $(SRC_DIR) && ld -z noexecstack -m elf_$(TARGET_ARCH) -r -b binary -o $(abspath $@) $(patsubst $(SRC_DIR)/%, %, $(realpath $<))
+	cd $(SRC_DIR) && ld -z noexecstack -m $(LD_ARCH) -r -b binary -o $(abspath $@) $(patsubst $(SRC_DIR)/%, %, $(realpath $<))
 
 -include $(DEPFILES)
