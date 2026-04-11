@@ -35,8 +35,10 @@ struct LuaModules final {
 };
 
 [[nodiscard]] std::unique_ptr<LuaModules>
-construct_lua_modules(const std::filesystem::path &ws_root,
-                      const std::filesystem::path &build_dir) noexcept;
+construct_lua_modules(
+    const std::filesystem::path &ws_root,
+    const std::filesystem::path &build_dir,
+    std::span<const std::unique_ptr<module::Module>> yabt_modules) noexcept;
 
 [[nodiscard]] runtime::Result<lua::LuaEngine, std::string> prepare_lua_engine(
     const std::filesystem::path &ws_root, LuaModules &lua_modules,

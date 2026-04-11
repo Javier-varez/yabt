@@ -31,7 +31,8 @@ list_inner(const std::span<const std::string_view> target_patterns) {
       std::filesystem::absolute(ws_root.value() / workspace::BUILD_DIR_NAME);
 
   auto modules = RESULT_PROPAGATE(workspace::open_workspace(ws_root.value()));
-  auto lua_modules = build::construct_lua_modules(ws_root.value(), build_dir);
+  auto lua_modules =
+      build::construct_lua_modules(ws_root.value(), build_dir, modules);
   auto lua_engine = RESULT_PROPAGATE(
       build::prepare_lua_engine(ws_root.value(), *lua_modules, modules));
   RESULT_PROPAGATE_DISCARD(

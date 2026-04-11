@@ -1,4 +1,6 @@
+#include <filesystem>
 #include <fstream>
+#include <map>
 #include <regex>
 #include <string>
 
@@ -23,10 +25,17 @@ void register_modules(lua::LuaEngine &engine, LuaModules &modules) noexcept {
 } // namespace
 
 [[nodiscard]] std::unique_ptr<LuaModules>
-construct_lua_modules(const std::filesystem::path &ws_root,
-                      const std::filesystem::path &build_dir) noexcept {
+construct_lua_modules(
+    const std::filesystem::path &ws_root,
+    const std::filesystem::path &build_dir,
+    std::span<const std::unique_ptr<module::Module>> yabt_modules) noexcept {
+  std::map<std::string, std::filesystem::path> module_paths;
+  for (const auto &mod : yabt_modules) {
+    module_paths[mod->name()] =
+        std::filesystem::relative(mod->disk_path(), ws_root);
+  }
   return std::make_unique<LuaModules>(LuaModules{
-      .pathlib{ws_root, build_dir},
+      .pathlib{ws_root, build_dir, std::move(module_paths)},
       .contextlib{},
       .loglib{},
   });
@@ -139,7 +148,7 @@ execute_build(const int threads, const bool compdb,
           ws_root.value() / workspace::BUILD_DIR_NAME));
 
   auto modules = RESULT_PROPAGATE(workspace::open_workspace(ws_root.value()));
-  auto lua_modules = construct_lua_modules(ws_root.value(), build_dir);
+  auto lua_modules = construct_lua_modules(ws_root.value(), build_dir, modules);
   auto lua_engine = RESULT_PROPAGATE(
       prepare_lua_engine(ws_root.value(), *lua_modules, modules));
   RESULT_PROPAGATE_DISCARD(invoke_rule_initializers(lua_engine, modules));

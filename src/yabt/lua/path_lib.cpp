@@ -1,6 +1,8 @@
 #include "yabt/lua/path_lib.h"
 
 #include <filesystem>
+#include <map>
+#include <string>
 
 #include "yabt/lua/utils.h"
 
@@ -79,6 +81,38 @@ template <typename PathParams> struct PathImpl final {
     l_new_relative_path_impl(L, rel);
 
     lua_remove(L, -2);
+    return 1;
+  }
+
+  // Takes 2 args apart from self. First arg is the module name and the second
+  // (optional) arg is the path relative to the module.
+  [[nodiscard]] static int l_new_in_module(lua_State *const L) noexcept {
+    const int num_args = lua_gettop(L);
+    if (num_args > 3) {
+      return luaL_error(L, "Got too many arguments to new_in_module: %d",
+                        num_args);
+    }
+
+    const char *module_name = luaL_checkstring(L, 2);
+
+    const char *rel_path = "./";
+    if (num_args == 3 && !lua_isnil(L, 3)) {
+      rel_path = luaL_checkstring(L, 3);
+    }
+
+    const PathLib *const pathlib = get_lib_from_registry(L);
+    runtime::check(pathlib != nullptr,
+                   "get_lib_from_registry returned nullptr!");
+
+    const auto it = pathlib->module_paths.find(module_name);
+    if (it == pathlib->module_paths.end()) {
+      return luaL_error(L, "Unknown module: %s", module_name);
+    }
+
+    const std::filesystem::path combined = it->second / rel_path;
+    lua_pop(L, num_args);
+
+    l_new_relative_path_impl(L, combined);
     return 1;
   }
 
@@ -171,8 +205,9 @@ template <typename PathParams> struct PathImpl final {
     return 0;
   }
 
-  constexpr static struct luaL_Reg constructor_table[] = {
+  constexpr static struct luaL_Reg CONSTRUCTOR_TABLE[] = {
       {"new_relative", l_new_relative_path}, //
+      {"new_in_module", l_new_in_module},    //
       {nullptr, nullptr},                    //
   };
 
@@ -194,7 +229,7 @@ template <typename PathParams> struct PathImpl final {
     luaL_register(L, nullptr, instance_table);
     lua_pop(L, 1);
 
-    luaL_register(L, PathParams::PACKAGE_NAME, constructor_table);
+    luaL_register(L, PathParams::PACKAGE_NAME, CONSTRUCTOR_TABLE);
     lua_setfield(L, -2, PathParams::TYPE_NAME);
   }
 };
@@ -254,9 +289,11 @@ runtime::Result<Path, std::string> parse_with_spec(lua_State *const L,
       "Expected path but got: {}", lua_typename(L, lua_type(L, -1))));
 }
 
-PathLib::PathLib(std::filesystem::path source_dir,
-                 std::filesystem::path output_dir) noexcept
-    : source_dir{source_dir}, output_dir{output_dir}, state{} {}
+PathLib::PathLib(
+    std::filesystem::path source_dir, std::filesystem::path output_dir,
+    std::map<std::string, std::filesystem::path> module_paths) noexcept
+    : source_dir{source_dir}, output_dir{output_dir},
+      module_paths{std::move(module_paths)}, state{} {}
 
 void PathLib::register_in_engine(lua_State *const L) noexcept {
   state = L;
@@ -270,7 +307,8 @@ void PathLib::register_in_engine(lua_State *const L) noexcept {
 
 PathLib::PathLib(PathLib &&other) noexcept
     : source_dir{std::move(other.source_dir)},
-      output_dir{std::move(other.output_dir)}, state{other.state} {
+      output_dir{std::move(other.output_dir)},
+      module_paths{std::move(other.module_paths)}, state{other.state} {
   init_registry(state, this);
 }
 
@@ -279,6 +317,7 @@ PathLib &PathLib::operator=(PathLib &&other) noexcept {
     state = other.state;
     source_dir = std::move(other.source_dir);
     output_dir = std::move(other.output_dir);
+    module_paths = std::move(other.module_paths);
     init_registry(state, this);
   }
   return *this;
