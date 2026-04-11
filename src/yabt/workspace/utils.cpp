@@ -171,13 +171,16 @@ open_workspace(const std::filesystem::path &ws_root) noexcept {
 
     for (const auto &[dep_name, dep] : modfile.deps) {
       log::IndentGuard _indent_guard{};
+      const std::filesystem::path dep_dir = deps_dir / dep_name;
 
       if (dep.external) {
+        auto module = RESULT_PROPAGATE(module::open_module(dep_dir));
+        all_modules.push_back(std::move(module));
+
         yabt_debug("Skipping external dependency {}", dep_name);
         continue;
       }
 
-      const std::filesystem::path dep_dir = deps_dir / dep_name;
       queue.push_back(dep_dir);
     }
   }

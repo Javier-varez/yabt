@@ -5,15 +5,16 @@ local M = {}
 local cc = require 'yabt_cc_rules.cc'
 local path = require 'yabt.core.path'
 
--- FIXME: This should NOT be hardcoded
-local GTEST_DIR = 'DEPS/googletest/googletest/'
+local function gtest_path(p)
+    return path.InPath:new_in_module('googletest', p)
+end
 
 -- These path objects are created once at module load time.
 -- PathLib is registered before BUILD.lua files run, so this is safe.
-local gtest_include = path.InPath:new_relative(GTEST_DIR .. 'include')
-local gtest_src_include = path.InPath:new_relative(GTEST_DIR)
-local gtest_out = path.OutPath:new_relative('gtest/libgtest.a')
-local gtest_main_out = path.OutPath:new_relative('gtest/libgtest_main.a')
+local gtest_include = gtest_path('googletest/include')
+local gtest_src_include = gtest_path('googletest')
+local gtest_out = gtest_src_include:with_ext('/libgtest.a')
+local gtest_main_out = gtest_src_include:with_ext('/libgtest_main.a')
 
 -- Singletons shared across all GtestBinary targets in one build.
 -- Created lazily inside GtestBinary:new (where MODULE_PATH is set).
@@ -28,13 +29,13 @@ local function ensure_gtest_libs_exist()
 
     _gtest_lib = cc.Library:new {
         out = gtest_out,
-        srcs = { path.InPath:new_relative(GTEST_DIR .. 'src/gtest-all.cc') },
+        srcs = { gtest_path('googletest/src/gtest-all.cc') },
         includes = { gtest_include, gtest_src_include },
     }
 
     _gtest_main_lib = cc.Library:new {
         out = gtest_main_out,
-        srcs = { path.InPath:new_relative(GTEST_DIR .. 'src/gtest_main.cc') },
+        srcs = { gtest_path('googletest/src/gtest_main.cc') },
         includes = { gtest_include },
     }
 end
