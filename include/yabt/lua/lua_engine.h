@@ -59,16 +59,8 @@ private:
   [[nodiscard]] int do_yabt_preload() noexcept;
 
   lua_State *m_state;
-  std::optional<PathLib> m_pathlib;
   std::filesystem::path m_workspace_root;
   std::map<std::string, std::string_view> m_preloaded_packages;
-  std::string m_current_target;
-  std::set<std::string> m_leaf_paths;
-
-  std::vector<ninja::BuildStep> m_build_steps;
-  std::vector<ninja::BuildStepWithRule> m_build_steps_with_rule;
-  std::map<std::string, ninja::BuildRule> m_build_rules;
-  std::vector<std::string> m_all_targets;
 };
 
 } // namespace yabt::lua
