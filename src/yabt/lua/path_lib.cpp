@@ -196,6 +196,26 @@ template <typename PathParams> struct PathImpl final {
     return 1;
   }
 
+  [[nodiscard]] static int l_join(lua_State *const L) noexcept {
+    const PathLib *const pathlib = get_lib_from_registry(L);
+    runtime::check(pathlib != nullptr,
+                   "get_lib_from_registry returned nullptr!");
+
+    StackGuard g{L, -1};
+    std::filesystem::path *ud = static_cast<std::filesystem::path *>(
+        luaL_checkudata(L, 1, PathParams::METATABLE));
+    luaL_argcheck(L, ud != nullptr, 1, "path expected");
+
+    size_t length{};
+    const char *chunk = luaL_checklstring(L, -1, &length);
+
+    const std::filesystem::path newp = *ud / chunk;
+    lua_pop(L, 2);
+    PathImpl<OutPathParams>::l_new_relative_path_impl(
+        L, std::filesystem::relative(newp, pathlib->*PathParams::BASE_DIR));
+    return 1;
+  }
+
   [[nodiscard]] static int l_gc(lua_State *const L) noexcept {
     std::filesystem::path *ud = static_cast<std::filesystem::path *>(
         luaL_checkudata(L, 1, PathParams::METATABLE));
@@ -211,12 +231,13 @@ template <typename PathParams> struct PathImpl final {
       {nullptr, nullptr},                    //
   };
 
-  constexpr static struct luaL_Reg instance_table[] = {
+  constexpr static struct luaL_Reg INSTANCE_TABLE[] = {
       {"absolute", l_absolute},       //
       {"relative", l_relative},       //
       {"relative_to", l_relative_to}, //
       {"ext", l_ext},                 //
       {"with_ext", l_with_ext},       //
+      {"join", l_join},               //
       {"__gc", l_gc},                 //
       {nullptr, nullptr},             //
   };
@@ -226,7 +247,7 @@ template <typename PathParams> struct PathImpl final {
     lua_pushstring(L, "__index");
     lua_pushvalue(L, -2);
     lua_settable(L, -3);
-    luaL_register(L, nullptr, instance_table);
+    luaL_register(L, nullptr, INSTANCE_TABLE);
     lua_pop(L, 1);
 
     luaL_register(L, PathParams::PACKAGE_NAME, CONSTRUCTOR_TABLE);
