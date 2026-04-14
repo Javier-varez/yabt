@@ -5,6 +5,7 @@ local M = {}
 local cc = require 'yabt_cc_rules.cc'
 local path = require 'yabt.core.path'
 
+---@param p string the file path inside googletest
 local function gtest_path(p)
     return path.InPath:new_in_module('googletest', p)
 end
@@ -18,22 +19,28 @@ local gtest_main_out = gtest_src_include:with_ext('/libgtest_main.a')
 
 -- Singletons shared across all GtestBinary targets in one build.
 -- Created lazily inside GtestBinary:new (where MODULE_PATH is set).
-local _gtest_lib = nil
-local _gtest_main_lib = nil
-local _gtest_libs_built = false
+
+---@type CcLibrary
+local gtest_lib = nil
+
+---@type CcLibrary
+local gtest_main_lib = nil
+
+---@type boolean
+local gtest_libs_built = false
 
 -- Create the gtest and gtest_main library objects if not done yet.
 -- Must be called when MODULE_PATH is available (i.e. during BUILD.lua execution).
 local function ensure_gtest_libs_exist()
-    if _gtest_lib ~= nil then return end
+    if gtest_lib ~= nil then return end
 
-    _gtest_lib = cc.Library:new {
+    gtest_lib = cc.Library:new {
         out = gtest_out,
         srcs = { gtest_path('googletest/src/gtest-all.cc') },
         includes = { gtest_include, gtest_src_include },
     }
 
-    _gtest_main_lib = cc.Library:new {
+    gtest_main_lib = cc.Library:new {
         out = gtest_main_out,
         srcs = { gtest_path('googletest/src/gtest_main.cc') },
         includes = { gtest_include },
@@ -51,7 +58,7 @@ end
 ---@field ldflags ?string[]
 ---@field ldflags_post ?string[]
 ---@field toolchain ?Toolchain
----@field private binary ?cc.Binary
+---@field private binary ?CcBinary
 local GtestBinary = {}
 
 ---@param bin GtestBinary
@@ -59,13 +66,13 @@ function GtestBinary:new(bin)
     ensure_gtest_libs_exist()
 
     bin.deps = bin.deps or {}
-    table.insert(bin.deps, _gtest_lib)
-    table.insert(bin.deps, _gtest_main_lib)
+    table.insert(bin.deps, gtest_lib)
+    table.insert(bin.deps, gtest_main_lib)
 
     bin.ldflags_post = bin.ldflags_post or {}
     table.insert(bin.ldflags_post, '-lpthread')
 
-    -- Build the underlying cc.Binary, which depends on gtest + gtest_main.
+    -- Build the underlying CcBinary, which depends on gtest + gtest_main.
     bin.binary = cc.Binary:new {
         out = bin.out,
         srcs = bin.srcs,
@@ -83,17 +90,19 @@ function GtestBinary:new(bin)
     return bin
 end
 
+---@param ctx Context
 function GtestBinary:build(ctx)
     -- Build the shared gtest libraries exactly once across all test targets.
-    if not _gtest_libs_built then
+    if not gtest_libs_built then
         ensure_gtest_libs_exist()
-        _gtest_lib:build(ctx)
-        _gtest_main_lib:build(ctx)
-        _gtest_libs_built = true
+        gtest_lib:build(ctx)
+        gtest_main_lib:build(ctx)
+        gtest_libs_built = true
     end
     self.binary:build(ctx)
 end
 
+---@param args string[]
 function GtestBinary:test(args)
     return self.binary:run(args)
 end
