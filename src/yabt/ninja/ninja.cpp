@@ -12,7 +12,13 @@ runtime::Result<void, std::string> save_ninja_file(
     const std::span<const BuildStepWithRule> build_steps_with_rule) noexcept {
 
   // FIXME: This code deserves a bit of cleanup. But for now it does the job.
-  std::filesystem::create_directories(ninja_filepath.parent_path());
+  std::error_code error_code;
+  std::filesystem::create_directories(ninja_filepath.parent_path(), error_code);
+  if (error_code) {
+    return runtime::Result<void, std::string>::error(std::format(
+        "Failed to create build directory {}: {}",
+        ninja_filepath.parent_path().native(), error_code.message()));
+  }
   FILE *file = fopen(ninja_filepath.c_str(), "wb");
   runtime::check(file != nullptr, "Error opening ninja file");
 
