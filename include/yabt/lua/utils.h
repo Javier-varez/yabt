@@ -12,6 +12,10 @@
 
 namespace yabt::lua {
 
+// Set this variable to true to debug whether the stack tree is balanced in C++
+// function handlers.
+constexpr static bool ENABLE_STACK_GUARD = false;
+
 class StackGuard {
 public:
   inline explicit StackGuard(lua_State *const L, int delta = 0)
@@ -23,11 +27,13 @@ public:
   StackGuard &operator=(StackGuard &&) = delete;
 
   inline ~StackGuard() {
-    int cur = lua_gettop(m_state);
-    runtime::check(
-        cur == m_stack + m_delta,
-        "Stack is not balanced. Exit {}. Entry {}. Expected delta {}", cur,
-        m_stack, m_delta);
+    if constexpr (ENABLE_STACK_GUARD) {
+      int cur = lua_gettop(m_state);
+      runtime::check(
+          cur == m_stack + m_delta,
+          "Stack is not balanced. Exit {}. Entry {}. Expected delta {}", cur,
+          m_stack, m_delta);
+    }
   }
 
 private:
