@@ -59,7 +59,7 @@ struct OutPathParams final {
 template <typename PathParams> struct PathImpl final {
 
   template <typename T>
-  static void l_new_relative_path_impl(lua_State *const L, T val) noexcept {
+  static void l_new_relative_path_impl(lua_State *const L, T val) {
     void *data = lua_newuserdata(L, sizeof(std::filesystem::path));
     luaL_getmetatable(L, PathParams::METATABLE);
     lua_setmetatable(L, -2);
@@ -72,7 +72,7 @@ template <typename PathParams> struct PathImpl final {
         std::filesystem::weakly_canonical(pathlib->*PathParams::BASE_DIR / *ud);
   }
 
-  [[nodiscard]] static int l_new_relative_path(lua_State *const L) noexcept {
+  [[nodiscard]] static int l_new_relative_path(lua_State *const L) {
     StackGuard g{L};
     size_t length{};
     const char *path = luaL_checklstring(L, -1, &length);
@@ -86,7 +86,7 @@ template <typename PathParams> struct PathImpl final {
 
   // Takes 2 args apart from self. First arg is the module name and the second
   // (optional) arg is the path relative to the module.
-  [[nodiscard]] static int l_new_in_module(lua_State *const L) noexcept {
+  [[nodiscard]] static int l_new_in_module(lua_State *const L) {
     const int num_args = lua_gettop(L);
     if (num_args > 3) {
       return luaL_error(L, "Got too many arguments to new_in_module: %d",
@@ -116,7 +116,7 @@ template <typename PathParams> struct PathImpl final {
     return 1;
   }
 
-  [[nodiscard]] static int l_absolute(lua_State *const L) noexcept {
+  [[nodiscard]] static int l_absolute(lua_State *const L) {
     StackGuard g{L};
     std::filesystem::path *ud = static_cast<std::filesystem::path *>(
         luaL_checkudata(L, 1, PathParams::METATABLE));
@@ -126,7 +126,7 @@ template <typename PathParams> struct PathImpl final {
     return 1;
   }
 
-  [[nodiscard]] static int l_relative(lua_State *const L) noexcept {
+  [[nodiscard]] static int l_relative(lua_State *const L) {
     const PathLib *const pathlib = get_lib_from_registry(L);
     runtime::check(pathlib != nullptr,
                    "get_lib_from_registry returned nullptr!");
@@ -143,7 +143,7 @@ template <typename PathParams> struct PathImpl final {
     return 1;
   }
 
-  [[nodiscard]] static int l_relative_to(lua_State *const L) noexcept {
+  [[nodiscard]] static int l_relative_to(lua_State *const L) {
     const PathLib *const pathlib = get_lib_from_registry(L);
     runtime::check(pathlib != nullptr,
                    "get_lib_from_registry returned nullptr!");
@@ -164,7 +164,7 @@ template <typename PathParams> struct PathImpl final {
     return 1;
   }
 
-  [[nodiscard]] static int l_ext(lua_State *const L) noexcept {
+  [[nodiscard]] static int l_ext(lua_State *const L) {
     StackGuard g{L};
     std::filesystem::path *ud = static_cast<std::filesystem::path *>(
         luaL_checkudata(L, 1, PathParams::METATABLE));
@@ -174,7 +174,7 @@ template <typename PathParams> struct PathImpl final {
     return 1;
   }
 
-  [[nodiscard]] static int l_with_ext(lua_State *const L) noexcept {
+  [[nodiscard]] static int l_with_ext(lua_State *const L) {
     const PathLib *const pathlib = get_lib_from_registry(L);
     runtime::check(pathlib != nullptr,
                    "get_lib_from_registry returned nullptr!");
@@ -196,7 +196,7 @@ template <typename PathParams> struct PathImpl final {
     return 1;
   }
 
-  [[nodiscard]] static int l_join(lua_State *const L) noexcept {
+  [[nodiscard]] static int l_join(lua_State *const L) {
     const PathLib *const pathlib = get_lib_from_registry(L);
     runtime::check(pathlib != nullptr,
                    "get_lib_from_registry returned nullptr!");
@@ -216,7 +216,7 @@ template <typename PathParams> struct PathImpl final {
     return 1;
   }
 
-  [[nodiscard]] static int l_gc(lua_State *const L) noexcept {
+  [[nodiscard]] static int l_gc(lua_State *const L) {
     std::filesystem::path *ud = static_cast<std::filesystem::path *>(
         luaL_checkudata(L, 1, PathParams::METATABLE));
     luaL_argcheck(L, ud != nullptr, 1, "path expected");
@@ -242,7 +242,7 @@ template <typename PathParams> struct PathImpl final {
       {nullptr, nullptr},             //
   };
 
-  static void register_lib(lua_State *const L) noexcept {
+  static void register_lib(lua_State *const L) {
     luaL_newmetatable(L, PathParams::METATABLE);
     lua_pushstring(L, "__index");
     lua_pushvalue(L, -2);
@@ -255,7 +255,7 @@ template <typename PathParams> struct PathImpl final {
   }
 };
 
-[[nodiscard]] static int l_is_path(lua_State *const L) noexcept {
+[[nodiscard]] static int l_is_path(lua_State *const L) {
   StackGuard g{L};
   const auto *in = luaL_testudata(L, 1, IN_PATH_META);
   const auto *out = luaL_testudata(L, 1, OUT_PATH_META);
@@ -265,7 +265,7 @@ template <typename PathParams> struct PathImpl final {
   return 1;
 }
 
-[[nodiscard]] static int l_is_out_path(lua_State *const L) noexcept {
+[[nodiscard]] static int l_is_out_path(lua_State *const L) {
   StackGuard g{L};
   const auto *out = luaL_testudata(L, 1, OUT_PATH_META);
   const bool res = out != nullptr;
@@ -282,8 +282,8 @@ constexpr static struct luaL_Reg free_functions_table[] = {
 
 } // namespace
 
-runtime::Result<OutPath, std::string>
-parse_with_spec(lua_State *const L, LuaUserData<OutPath>) noexcept {
+runtime::Result<OutPath, std::string> parse_with_spec(lua_State *const L,
+                                                      LuaUserData<OutPath>) {
   StackGuard g{L};
   std::filesystem::path *ud = static_cast<std::filesystem::path *>(
       luaL_checkudata(L, -1, OutPathParams::METATABLE));
@@ -292,7 +292,7 @@ parse_with_spec(lua_State *const L, LuaUserData<OutPath>) noexcept {
 }
 
 runtime::Result<Path, std::string> parse_with_spec(lua_State *const L,
-                                                   LuaUserData<Path>) noexcept {
+                                                   LuaUserData<Path>) {
   StackGuard g{L};
   const auto *const in =
       static_cast<std::filesystem::path *>(luaL_testudata(L, -1, IN_PATH_META));
@@ -310,13 +310,13 @@ runtime::Result<Path, std::string> parse_with_spec(lua_State *const L,
       "Expected path but got: {}", lua_typename(L, lua_type(L, -1))));
 }
 
-PathLib::PathLib(
-    std::filesystem::path source_dir, std::filesystem::path output_dir,
-    std::map<std::string, std::filesystem::path> module_paths) noexcept
+PathLib::PathLib(std::filesystem::path source_dir,
+                 std::filesystem::path output_dir,
+                 std::map<std::string, std::filesystem::path> module_paths)
     : source_dir{source_dir}, output_dir{output_dir},
       module_paths{std::move(module_paths)}, state{} {}
 
-void PathLib::register_in_engine(lua_State *const L) noexcept {
+void PathLib::register_in_engine(lua_State *const L) {
   state = L;
   StackGuard g{L};
   luaL_register(L, PATH_PACKAGE_NAME, free_functions_table);
@@ -326,14 +326,14 @@ void PathLib::register_in_engine(lua_State *const L) noexcept {
   init_registry(L, this);
 }
 
-PathLib::PathLib(PathLib &&other) noexcept
+PathLib::PathLib(PathLib &&other)
     : source_dir{std::move(other.source_dir)},
       output_dir{std::move(other.output_dir)},
       module_paths{std::move(other.module_paths)}, state{other.state} {
   init_registry(state, this);
 }
 
-PathLib &PathLib::operator=(PathLib &&other) noexcept {
+PathLib &PathLib::operator=(PathLib &&other) {
   if (&other != this) {
     state = other.state;
     source_dir = std::move(other.source_dir);

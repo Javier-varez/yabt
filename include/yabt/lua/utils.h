@@ -86,35 +86,35 @@ template <> struct LuaParseSpec<OutPath> {
 
 template <typename T>
 [[nodiscard]] runtime::Result<std::vector<T>, std::string>
-parse_with_spec(lua_State *const L, LuaArray<T>) noexcept;
+parse_with_spec(lua_State *const L, LuaArray<T>);
 
 template <typename T, typename... Args>
 [[nodiscard]] runtime::Result<T, std::string>
-parse_with_spec(lua_State *const L, LuaStruct<T, Args...>) noexcept;
+parse_with_spec(lua_State *const L, LuaStruct<T, Args...>);
 
 template <typename T, typename U>
 [[nodiscard]] runtime::Result<std::map<T, U>, std::string>
-parse_with_spec(lua_State *const L, LuaKvPairs<T, U>) noexcept;
+parse_with_spec(lua_State *const L, LuaKvPairs<T, U>);
 
 [[nodiscard]] runtime::Result<std::string, std::string>
-parse_with_spec(lua_State *const L, LuaString) noexcept;
+parse_with_spec(lua_State *const L, LuaString);
 
 [[nodiscard]] runtime::Result<int, std::string>
-parse_with_spec(lua_State *const L, LuaInteger) noexcept;
+parse_with_spec(lua_State *const L, LuaInteger);
 
 [[nodiscard]] runtime::Result<bool, std::string>
-parse_with_spec(lua_State *const L, LuaBoolean) noexcept;
+parse_with_spec(lua_State *const L, LuaBoolean);
 
 template <typename T>
 [[nodiscard]] runtime::Result<T, std::string>
-parse_lua_object(lua_State *const L) noexcept {
+parse_lua_object(lua_State *const L) {
   StackGuard g{L};
   return parse_with_spec(L, typename LuaParseSpec<T>::spec{});
 }
 
 template <typename T>
 [[nodiscard]] runtime::Result<std::vector<T>, std::string>
-parse_with_spec(lua_State *const L, LuaArray<T>) noexcept {
+parse_with_spec(lua_State *const L, LuaArray<T>) {
   StackGuard g{L};
   if (lua_isnil(L, -1)) {
     // Treat a missing array as an empty array
@@ -143,7 +143,7 @@ parse_with_spec(lua_State *const L, LuaArray<T>) noexcept {
 
 template <typename T, typename U>
 [[nodiscard]] runtime::Result<std::map<T, U>, std::string>
-parse_with_spec(lua_State *const L, LuaKvPairs<T, U>) noexcept {
+parse_with_spec(lua_State *const L, LuaKvPairs<T, U>) {
   StackGuard g{L};
   if (lua_isnil(L, -1)) {
     // Treat a missing table as an empty table
@@ -174,7 +174,7 @@ parse_with_spec(lua_State *const L, LuaKvPairs<T, U>) noexcept {
 
 template <typename T, typename... Args>
 [[nodiscard]] runtime::Result<T, std::string>
-parse_with_spec(lua_State *const L, LuaStruct<T, Args...>) noexcept {
+parse_with_spec(lua_State *const L, LuaStruct<T, Args...>) {
   StackGuard g{L};
   if (!lua_istable(L, -1)) {
     return runtime::Result<T, std::string>::error(
@@ -214,7 +214,7 @@ parse_with_spec(lua_State *const L, LuaStruct<T, Args...>) noexcept {
 }
 
 [[nodiscard]] inline runtime::Result<std::string, std::string>
-parse_with_spec(lua_State *const L, LuaString) noexcept {
+parse_with_spec(lua_State *const L, LuaString) {
   StackGuard g{L};
   if (lua_isnil(L, -1)) {
     // Empty string
@@ -231,7 +231,7 @@ parse_with_spec(lua_State *const L, LuaString) noexcept {
 }
 
 [[nodiscard]] inline runtime::Result<int, std::string>
-parse_with_spec(lua_State *const L, LuaInteger) noexcept {
+parse_with_spec(lua_State *const L, LuaInteger) {
   StackGuard g{L};
   if (!lua_isnumber(L, -1)) {
     return runtime::Result<int, std::string>::error(
@@ -244,7 +244,7 @@ parse_with_spec(lua_State *const L, LuaInteger) noexcept {
 }
 
 [[nodiscard]] inline runtime::Result<bool, std::string>
-parse_with_spec(lua_State *const L, LuaBoolean) noexcept {
+parse_with_spec(lua_State *const L, LuaBoolean) {
   StackGuard g{L};
   if (lua_isnil(L, -1)) {
     // Empty string
@@ -262,10 +262,10 @@ parse_with_spec(lua_State *const L, LuaBoolean) noexcept {
 }
 
 [[nodiscard]] runtime::Result<Path, std::string>
-parse_with_spec(lua_State *const L, LuaUserData<Path>) noexcept;
+parse_with_spec(lua_State *const L, LuaUserData<Path>);
 
 [[nodiscard]] runtime::Result<OutPath, std::string>
-parse_with_spec(lua_State *const L, LuaUserData<OutPath>) noexcept;
+parse_with_spec(lua_State *const L, LuaUserData<OutPath>);
 
 #define _REMOVE_PARENS_IMPL(...) __VA_ARGS__
 #define _REMOVE_PARENS(...) _REMOVE_PARENS_IMPL __VA_ARGS__

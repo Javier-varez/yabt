@@ -29,8 +29,7 @@ ContextLib *get_lib_from_registry(lua_State *const L) {
   return lib;
 }
 
-runtime::Result<void, std::string>
-add_build_step_impl(ContextLib &lib) noexcept {
+runtime::Result<void, std::string> add_build_step_impl(ContextLib &lib) {
   if (lua_gettop(lib.state) != 1) {
     return runtime::Result<void, std::string>::error(
         std::format("Expected 1 argument to add_build_step, but got: {}",
@@ -58,7 +57,7 @@ add_build_step_impl(ContextLib &lib) noexcept {
   return runtime::Result<void, std::string>::ok();
 }
 
-void add_build_step(ContextLib &lib) noexcept {
+void add_build_step(ContextLib &lib) {
   {
     const runtime::Result result = add_build_step_impl(lib);
     if (result.is_ok()) {
@@ -73,7 +72,7 @@ void add_build_step(ContextLib &lib) noexcept {
   lua_error(lib.state);
 }
 
-int l_add_build_step(lua_State *const L) noexcept {
+int l_add_build_step(lua_State *const L) {
   StackGuard g{L, -1}; // 1 input arg, 0 outputs
   ContextLib *const lib = get_lib_from_registry(L);
   runtime::check(lib != nullptr, "Context lib is NULL");
@@ -82,7 +81,7 @@ int l_add_build_step(lua_State *const L) noexcept {
 }
 
 runtime::Result<void, std::string>
-add_build_step_with_rule_impl(ContextLib &lib) noexcept {
+add_build_step_with_rule_impl(ContextLib &lib) {
   if (lua_gettop(lib.state) != 2) {
     return runtime::Result<void, std::string>::error(std::format(
         "Expected 2 arguments to add_build_step_with_rule, but got: {}",
@@ -121,7 +120,7 @@ add_build_step_with_rule_impl(ContextLib &lib) noexcept {
   return runtime::Result<void, std::string>::ok();
 }
 
-void add_build_step_with_rule(ContextLib &lib) noexcept {
+void add_build_step_with_rule(ContextLib &lib) {
   {
     const runtime::Result result = add_build_step_with_rule_impl(lib);
     if (result.is_ok()) {
@@ -136,7 +135,7 @@ void add_build_step_with_rule(ContextLib &lib) noexcept {
   lua_error(lib.state);
 }
 
-int l_add_build_step_with_rule(lua_State *const L) noexcept {
+int l_add_build_step_with_rule(lua_State *const L) {
   StackGuard g{L, -2}; // 2 input args, 0 outputs
   ContextLib *const lib = get_lib_from_registry(L);
   runtime::check(lib != nullptr, "Context lib is NULL");
@@ -144,7 +143,7 @@ int l_add_build_step_with_rule(lua_State *const L) noexcept {
   return 0;
 }
 
-int handle_target(ContextLib &lib) noexcept {
+int handle_target(ContextLib &lib) {
   if (lua_gettop(lib.state) != 3) {
     lua_pushstring(
         lib.state,
@@ -202,14 +201,14 @@ int handle_target(ContextLib &lib) noexcept {
   return 2;
 }
 
-int l_handle_target(lua_State *const L) noexcept {
+int l_handle_target(lua_State *const L) {
   StackGuard g{L, -1}; // 3 input args, 2 output args
   ContextLib *const lib = get_lib_from_registry(L);
   runtime::check(lib != nullptr, "Context lib is NULL");
   return handle_target(*lib);
 }
 
-int l_register_run_fn(lua_State *const L) noexcept {
+int l_register_run_fn(lua_State *const L) {
   StackGuard g{L, -1}; // 1 input arg, 0 outputs (luaL_ref pops the value)
   ContextLib *const lib = get_lib_from_registry(L);
   runtime::check(lib != nullptr, "Context lib is NULL");
@@ -224,7 +223,7 @@ int l_register_run_fn(lua_State *const L) noexcept {
   return 0;
 }
 
-int l_register_test_fn(lua_State *const L) noexcept {
+int l_register_test_fn(lua_State *const L) {
   StackGuard g{L, -1}; // 1 input arg, 0 outputs (luaL_ref pops the value)
   ContextLib *const lib = get_lib_from_registry(L);
   runtime::check(lib != nullptr, "Context lib is NULL");
@@ -253,7 +252,7 @@ static constexpr const char CONTEXT_PACKAGE_NAME[] = "yabt.core.context";
 runtime::Result<std::vector<std::string>, std::string>
 call_fn_impl(lua_State *const L, const std::map<std::string, int> &fn_refs,
              const std::string_view method_name, const std::string &target,
-             std::span<const std::string_view> args) noexcept {
+             std::span<const std::string_view> args) {
   const auto fn_ref_iter = fn_refs.find(target);
   if (fn_ref_iter == fn_refs.cend()) {
     return runtime::Result<std::vector<std::string>, std::string>::error(
@@ -298,7 +297,7 @@ call_fn_impl(lua_State *const L, const std::map<std::string, int> &fn_refs,
 
 } // namespace
 
-ContextLib::ContextLib(ContextLib &&other) noexcept
+ContextLib::ContextLib(ContextLib &&other)
     : build_steps{std::move(other.build_steps)},
       build_steps_with_rule{std::move(other.build_steps_with_rule)},
       build_rules{std::move(other.build_rules)},
@@ -311,7 +310,7 @@ ContextLib::ContextLib(ContextLib &&other) noexcept
   init_registry(state, this);
 }
 
-ContextLib &ContextLib::operator=(ContextLib &&other) noexcept {
+ContextLib &ContextLib::operator=(ContextLib &&other) {
   if (this != &other) {
     build_steps = std::move(other.build_steps);
     build_steps_with_rule = std::move(other.build_steps_with_rule);
@@ -328,7 +327,7 @@ ContextLib &ContextLib::operator=(ContextLib &&other) noexcept {
   return *this;
 }
 
-void ContextLib::register_in_engine(lua_State *const L) noexcept {
+void ContextLib::register_in_engine(lua_State *const L) {
   state = L;
   StackGuard g{L};
   luaL_register(L, CONTEXT_PACKAGE_NAME, context_functions);
@@ -338,13 +337,13 @@ void ContextLib::register_in_engine(lua_State *const L) noexcept {
 
 runtime::Result<std::vector<std::string>, std::string>
 ContextLib::call_run_fn(const std::string &target,
-                        std::span<const std::string_view> args) noexcept {
+                        std::span<const std::string_view> args) {
   return call_fn_impl(state, run_fn_refs, "run", target, args);
 }
 
 runtime::Result<std::vector<std::string>, std::string>
 ContextLib::call_test_fn(const std::string &target,
-                         std::span<const std::string_view> args) noexcept {
+                         std::span<const std::string_view> args) {
   return call_fn_impl(state, test_fn_refs, "test", target, args);
 }
 

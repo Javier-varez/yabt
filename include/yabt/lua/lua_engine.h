@@ -22,41 +22,41 @@ namespace yabt::lua {
 class LuaEngine {
 public:
   [[nodiscard]] static yabt::runtime::Result<LuaEngine, std::string>
-  construct(const std::filesystem::path &workspace_root) noexcept;
+  construct(const std::filesystem::path &workspace_root);
 
-  LuaEngine(const LuaEngine &) noexcept = delete;
-  LuaEngine &operator=(const LuaEngine &) noexcept = delete;
+  LuaEngine(const LuaEngine &) = delete;
+  LuaEngine &operator=(const LuaEngine &) = delete;
 
-  LuaEngine(LuaEngine &&) noexcept;
-  LuaEngine &operator=(LuaEngine &&) noexcept;
+  LuaEngine(LuaEngine &&);
+  LuaEngine &operator=(LuaEngine &&);
 
-  ~LuaEngine() noexcept;
+  ~LuaEngine();
 
-  void set_path(std::span<const std::string> paths) noexcept;
+  void set_path(std::span<const std::string> paths);
 
   // TODO: Move to preload module
-  void set_preloaded_lua_packages(
-      std::map<std::string, std::string_view> packages) noexcept;
+  void
+  set_preloaded_lua_packages(std::map<std::string, std::string_view> packages);
 
   // TODO: Move to runtime lua module
   [[nodiscard]] runtime::Result<void, std::string>
   register_yabt_module(const std::string &name,
                        const std::filesystem::path &path,
-                       std::span<const std::string> target_specs) noexcept;
+                       std::span<const std::string> target_specs);
 
-  void register_lua_module(LuaModule &module) noexcept;
-
-  [[nodiscard]] runtime::Result<void, std::string>
-  exec_file(std::string_view file_path) noexcept;
+  void register_lua_module(LuaModule &module);
 
   [[nodiscard]] runtime::Result<void, std::string>
-  exec_string(const char *string) noexcept;
+  exec_file(std::string_view file_path);
+
+  [[nodiscard]] runtime::Result<void, std::string>
+  exec_string(const char *string);
 
 private:
-  friend int l_do_yabt_preload(lua_State *const L) noexcept;
+  friend int l_do_yabt_preload(lua_State *const L);
 
-  LuaEngine() noexcept = default;
-  [[nodiscard]] int do_yabt_preload() noexcept;
+  LuaEngine() = default;
+  [[nodiscard]] int do_yabt_preload();
 
   lua_State *m_state;
   std::filesystem::path m_workspace_root;

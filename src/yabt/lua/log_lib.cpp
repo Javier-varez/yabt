@@ -49,7 +49,7 @@ static constexpr const char LOG_PACKAGE_NAME[] = "yabt.core.log";
 
 } // namespace
 
-void LogLib::register_in_engine(lua_State *const L) noexcept {
+void LogLib::register_in_engine(lua_State *const L) {
   StackGuard g{L};
   luaL_register(L, LOG_PACKAGE_NAME, logging_functions);
   lua_pop(L, 1);

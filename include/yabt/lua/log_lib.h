@@ -8,15 +8,15 @@ namespace yabt::lua {
 
 // Native utilities for logging
 struct LogLib : public LuaModule {
-  LogLib() noexcept = default;
+  LogLib() = default;
 
-  void register_in_engine(lua_State *const L) noexcept final;
+  void register_in_engine(lua_State *const L) final;
 
-  LogLib(const LogLib &) noexcept = delete;
-  LogLib &operator=(const LogLib &) noexcept = delete;
+  LogLib(const LogLib &) = delete;
+  LogLib &operator=(const LogLib &) = delete;
 
-  LogLib(LogLib &&) noexcept = default;
-  LogLib &operator=(LogLib &&) noexcept = default;
+  LogLib(LogLib &&) = default;
+  LogLib &operator=(LogLib &&) = default;
 };
 
 } // namespace yabt::lua

@@ -20,23 +20,23 @@ namespace yabt::lua {
 struct ContextLib : public LuaModule {
   ContextLib() = default;
 
-  ContextLib(const ContextLib &) noexcept = delete;
-  ContextLib &operator=(const ContextLib &) noexcept = delete;
+  ContextLib(const ContextLib &) = delete;
+  ContextLib &operator=(const ContextLib &) = delete;
 
-  ContextLib(ContextLib &&) noexcept;
-  ContextLib &operator=(ContextLib &&) noexcept;
+  ContextLib(ContextLib &&);
+  ContextLib &operator=(ContextLib &&);
 
-  void register_in_engine(lua_State *const L) noexcept final;
+  void register_in_engine(lua_State *const L) final;
 
   // Call the stored run/test function for a target with the given args.
   // Returns the argv list (executable + arguments) to execute.
   [[nodiscard]] runtime::Result<std::vector<std::string>, std::string>
   call_run_fn(const std::string &target,
-              std::span<const std::string_view> args) noexcept;
+              std::span<const std::string_view> args);
 
   [[nodiscard]] runtime::Result<std::vector<std::string>, std::string>
   call_test_fn(const std::string &target,
-               std::span<const std::string_view> args) noexcept;
+               std::span<const std::string_view> args);
 
 public:
   std::vector<ninja::BuildStep> build_steps;

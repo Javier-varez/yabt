@@ -32,7 +32,7 @@ LuaEngine *get_engine(lua_State *const L) {
 
 } // namespace
 
-int l_do_yabt_preload(lua_State *const L) noexcept {
+int l_do_yabt_preload(lua_State *const L) {
   StackGuard g{L};
   LuaEngine *const engine = get_engine(L);
   return engine->do_yabt_preload();
@@ -40,7 +40,7 @@ int l_do_yabt_preload(lua_State *const L) noexcept {
 
 namespace {
 
-void init_modules_global(lua_State *const L) noexcept {
+void init_modules_global(lua_State *const L) {
   runtime::check(lua_checkstack(L, 1), "Exceeded maximum Lua stack size");
   lua_newtable(L);
   lua_setglobal(L, "modules");
@@ -49,7 +49,7 @@ void init_modules_global(lua_State *const L) noexcept {
 } // namespace
 
 [[nodiscard]] yabt::runtime::Result<LuaEngine, std::string>
-LuaEngine::construct(const std::filesystem::path &workspace_root) noexcept {
+LuaEngine::construct(const std::filesystem::path &workspace_root) {
   LuaEngine engine;
 
   engine.m_state = luaL_newstate();
@@ -72,11 +72,11 @@ LuaEngine::construct(const std::filesystem::path &workspace_root) noexcept {
   return runtime::Result<LuaEngine, std::string>::ok(std::move(engine));
 }
 
-void LuaEngine::register_lua_module(LuaModule &module) noexcept {
+void LuaEngine::register_lua_module(LuaModule &module) {
   module.register_in_engine(m_state);
 }
 
-LuaEngine::LuaEngine(LuaEngine &&other) noexcept {
+LuaEngine::LuaEngine(LuaEngine &&other) {
   m_state = other.m_state;
   m_workspace_root = std::move(other.m_workspace_root);
   m_preloaded_packages = std::move(other.m_preloaded_packages);
@@ -85,7 +85,7 @@ LuaEngine::LuaEngine(LuaEngine &&other) noexcept {
   init_registry(m_state, this);
 }
 
-LuaEngine &LuaEngine::operator=(LuaEngine &&other) noexcept {
+LuaEngine &LuaEngine::operator=(LuaEngine &&other) {
   if (this != &other) {
     if (m_state)
       lua_close(m_state);
@@ -100,14 +100,13 @@ LuaEngine &LuaEngine::operator=(LuaEngine &&other) noexcept {
   return *this;
 }
 
-LuaEngine::~LuaEngine() noexcept {
+LuaEngine::~LuaEngine() {
   if (m_state) {
     lua_close(m_state);
   }
 }
 
-runtime::Result<void, std::string>
-LuaEngine::exec_string(const char *string) noexcept {
+runtime::Result<void, std::string> LuaEngine::exec_string(const char *string) {
   const int result = luaL_dostring(m_state, string);
   if (result != 0 /* LUA_OK */) {
     const char *str = luaL_checklstring(m_state, 1, nullptr);
@@ -119,7 +118,7 @@ LuaEngine::exec_string(const char *string) noexcept {
 }
 
 runtime::Result<void, std::string>
-LuaEngine::exec_file(std::string_view file_path) noexcept {
+LuaEngine::exec_file(std::string_view file_path) {
   StackGuard g{m_state};
   const int result = luaL_dofile(m_state, std::string{file_path}.c_str());
   if (result != 0 /* LUA_OK */) {
@@ -132,7 +131,7 @@ LuaEngine::exec_file(std::string_view file_path) noexcept {
 }
 
 void LuaEngine::set_preloaded_lua_packages(
-    std::map<std::string, std::string_view> packages) noexcept {
+    std::map<std::string, std::string_view> packages) {
   m_preloaded_packages = std::move(packages);
   StackGuard g{m_state};
 
@@ -147,7 +146,7 @@ void LuaEngine::set_preloaded_lua_packages(
   lua_pop(m_state, 2);
 }
 
-void LuaEngine::set_path(std::span<const std::string> paths) noexcept {
+void LuaEngine::set_path(std::span<const std::string> paths) {
   StackGuard g{m_state};
   std::string path{};
 
@@ -161,7 +160,7 @@ void LuaEngine::set_path(std::span<const std::string> paths) noexcept {
   set_package_path(m_state, path.c_str());
 }
 
-int LuaEngine::do_yabt_preload() noexcept {
+int LuaEngine::do_yabt_preload() {
   const char *req = lua_tostring(m_state, 1);
   yabt_verbose("do_yabt_preload: Loading file: {}", req);
 
@@ -183,9 +182,9 @@ int LuaEngine::do_yabt_preload() noexcept {
 }
 
 [[nodiscard]] runtime::Result<void, std::string>
-LuaEngine::register_yabt_module(
-    const std::string &name, const std::filesystem::path &path,
-    std::span<const std::string> target_specs) noexcept {
+LuaEngine::register_yabt_module(const std::string &name,
+                                const std::filesystem::path &path,
+                                std::span<const std::string> target_specs) {
   StackGuard g{m_state};
   runtime::check(lua_checkstack(m_state, 4), "Exceeded maximum Lua stack size");
 
