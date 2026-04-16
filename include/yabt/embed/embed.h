@@ -9,4 +9,7 @@ namespace yabt::embed {
 [[nodiscard]] std::map<std::string, std::string_view>
 get_embedded_lua_rules() noexcept;
 
+[[nodiscard]] std::map<std::string, std::string_view>
+get_embedded_lua_stubs() noexcept;
+
 } // namespace yabt::embed

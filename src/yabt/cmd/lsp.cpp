@@ -9,6 +9,7 @@
 
 #include "yabt/cli/args.h"
 #include "yabt/cmd/lsp.h"
+#include "yabt/embed/embed.h"
 #include "yabt/log/log.h"
 #include "yabt/module/module.h"
 #include "yabt/runtime/result.h"
@@ -132,28 +133,43 @@ LspCommand::register_command(cli::CliParser &cli_parser) noexcept {
     }
   }
 
-  // TODO: Unpack .lua-stubs from the binary to disk... This will only work in
-  // the yabt workspace.
-  const std::filesystem::path stubs_dir = ws_root.value() / ".lua-stubs";
-  if (std::filesystem::exists(stubs_dir)) {
-    yabt_verbose("Adding library path: {}", stubs_dir.native());
-    library_paths.push_back(stubs_dir);
-  }
-
-  const std::string json = generate_luarc_json(library_paths);
-
   // TODO: Use a temporary folder instead of the build folder.
-  const std::filesystem::path build_dir =
-      ws_root.value() / workspace::BUILD_DIR_NAME;
+  const std::filesystem::path lua_config_dir =
+      ws_root.value() / workspace::BUILD_DIR_NAME / ".luaconfig";
   std::error_code error_code;
-  std::filesystem::create_directories(build_dir, error_code);
+  std::filesystem::create_directories(lua_config_dir, error_code);
   if (error_code) {
     return runtime::Result<void, std::string>::error(
         std::format("Failed to create build directory {}: {}",
-                    build_dir.native(), error_code.message()));
+                    lua_config_dir.native(), error_code.message()));
   }
 
-  const std::filesystem::path config_path = build_dir / ".luarc.json";
+  const std::filesystem::path stubs_dir = lua_config_dir / ".lua-stubs";
+  const auto stubs = embed::get_embedded_lua_stubs();
+  for (const auto &[name, content] : stubs) {
+    const std::filesystem::path filepath = stubs_dir / name;
+    std::error_code error_code;
+    std::filesystem::create_directories(filepath.parent_path(), error_code);
+    if (error_code) {
+      return runtime::Result<void, std::string>::error(
+          std::format("Failed to create parent directory for {}: {}",
+                      filepath.native(), error_code.message()));
+    }
+
+    std::ofstream file{filepath};
+    if (!file) {
+      return runtime::Result<void, std::string>::error(
+          std::format("Failed to write file {}", filepath.native()));
+    }
+    file << content;
+  }
+
+  yabt_verbose("Adding library path: {}", stubs_dir.native());
+  library_paths.push_back(stubs_dir);
+
+  const std::string json = generate_luarc_json(library_paths);
+
+  const std::filesystem::path config_path = lua_config_dir / ".luarc.json";
   {
     std::ofstream config_file{config_path};
     if (!config_file) {

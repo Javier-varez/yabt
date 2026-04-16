@@ -6,6 +6,7 @@ local ldflags = pkg_config.get_link_flags('luajit')
 
 local embed = import 'yabt/embed'
 local rules = import 'yabt/embed/rules'
+local stubs = import 'yabt/embed/lua_stubs'
 
 targets.lib = cc.Library:new {
     out = out('yabt.a'),
@@ -47,6 +48,10 @@ targets.Bin = cc.Binary:new {
         targets.lib,
         embed.Blob,
         rules.Utils,
+        stubs.ContextBlob,
+        stubs.LogBlob,
+        stubs.PathBlob,
+        stubs.GlobalsBlob,
     },
     cxxflags = cxxflags,
     ldflags_post = ldflags,
