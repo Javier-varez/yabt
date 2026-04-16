@@ -12,6 +12,7 @@
 #include "yabt/embed/embed.h"
 #include "yabt/log/log.h"
 #include "yabt/module/module.h"
+#include "yabt/process/process.h"
 #include "yabt/runtime/result.h"
 #include "yabt/workspace/utils.h"
 
@@ -133,11 +134,15 @@ LspCommand::register_command(cli::CliParser &cli_parser) noexcept {
     }
   }
 
-  // TODO: Use a temporary folder instead of the build folder.
-  const std::filesystem::path lua_config_dir =
-      ws_root.value() / workspace::BUILD_DIR_NAME / ".luaconfig";
+  std::filesystem::path lua_config_dir_template{
+      std::filesystem::temp_directory_path() / "yabt_lsp_XXXXXX"};
+  std::string lua_config_dir_string = lua_config_dir_template.string();
+  runtime::check(mkdtemp(lua_config_dir_string.data()) != nullptr,
+                 "Error obtaining temporary directory");
+  const std::filesystem::path lua_config_dir{lua_config_dir_string};
+
   std::error_code error_code;
-  std::filesystem::create_directories(lua_config_dir, error_code);
+  std::filesystem::create_directories(lua_config_dir_string, error_code);
   if (error_code) {
     return runtime::Result<void, std::string>::error(
         std::format("Failed to create build directory {}: {}",
@@ -190,19 +195,15 @@ LspCommand::register_command(cli::CliParser &cli_parser) noexcept {
     args.emplace_back(arg);
   }
 
-  // execvp argv requires raw pointers to strings
-  std::vector<const char *> argv;
-  argv.push_back(m_lsp_binary.c_str());
-  for (const std::string &s : args) {
-    argv.push_back(s.c_str());
-  }
-  argv.push_back(nullptr);
+  process::Process proc{m_lsp_binary, std::span<const std::string>{args}};
+  RESULT_PROPAGATE_DISCARD(proc.start());
 
-  execvp(m_lsp_binary.c_str(), const_cast<char *const *>(argv.data()));
+  const auto output = proc.process_output();
 
-  // execvp only returns on failure to exec the process.
-  return runtime::Result<void, std::string>::error(
-      std::format("Failed to execute '{}': {}", m_lsp_binary, strerror(errno)));
+  // Cleanup
+  std::filesystem::remove_all(lua_config_dir);
+
+  return output.to_result();
 }
 
 } // namespace yabt::cmd
