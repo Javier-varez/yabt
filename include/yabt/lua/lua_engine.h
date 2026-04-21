@@ -33,6 +33,7 @@ public:
   ~LuaEngine();
 
   void set_path(std::span<const std::string> paths);
+  void set_cpath(std::span<const std::string> paths);
 
   // TODO: Move to preload module
   void

@@ -157,7 +157,23 @@ void LuaEngine::set_path(std::span<const std::string> paths) {
     path.append(p);
     needs_delimiter = true;
   }
+  yabt_debug("Setting package.path: {}", path);
   set_package_path(m_state, path.c_str());
+}
+
+void LuaEngine::set_cpath(std::span<const std::string> paths) {
+  StackGuard g{m_state};
+  std::string path{};
+
+  bool needs_delimiter = false;
+  for (const std::string &p : paths) {
+    if (needs_delimiter)
+      path.push_back(';');
+    path.append(p);
+    needs_delimiter = true;
+  }
+  yabt_debug("Setting package.cpath: {}", path);
+  set_package_cpath(m_state, path.c_str());
 }
 
 int LuaEngine::do_yabt_preload() {

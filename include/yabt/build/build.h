@@ -34,15 +34,20 @@ struct LuaModules final {
   lua::LogLib loglib;
 };
 
-[[nodiscard]] std::unique_ptr<LuaModules>
-construct_lua_modules(
+struct LuaPath {
+  std::string path;
+  std::string cpath;
+};
+
+[[nodiscard]] std::unique_ptr<LuaModules> construct_lua_modules(
     const std::filesystem::path &ws_root,
     const std::filesystem::path &build_dir,
     std::span<const std::unique_ptr<module::Module>> yabt_modules) noexcept;
 
-[[nodiscard]] runtime::Result<lua::LuaEngine, std::string> prepare_lua_engine(
+runtime::Result<lua::LuaEngine, std::string> prepare_lua_engine(
     const std::filesystem::path &ws_root, LuaModules &lua_modules,
-    std::span<const std::unique_ptr<module::Module>> yabt_modules) noexcept;
+    const std::span<const std::unique_ptr<module::Module>> yabt_modules,
+    const std::span<const LuaPath> extra_paths) noexcept;
 
 [[nodiscard]] runtime::Result<void, std::string> invoke_rule_initializers(
     lua::LuaEngine &engine,

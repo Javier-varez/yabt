@@ -34,7 +34,7 @@ list_inner(const std::span<const std::string_view> target_patterns) {
   auto lua_modules =
       build::construct_lua_modules(ws_root.value(), build_dir, modules);
   auto lua_engine = RESULT_PROPAGATE(
-      build::prepare_lua_engine(ws_root.value(), *lua_modules, modules));
+      build::prepare_lua_engine(ws_root.value(), *lua_modules, modules, {}));
   RESULT_PROPAGATE_DISCARD(
       build::invoke_rule_initializers(lua_engine, modules));
   RESULT_PROPAGATE_DISCARD(build::invoke_build_targets(lua_engine, modules));

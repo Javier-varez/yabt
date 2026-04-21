@@ -24,8 +24,7 @@ void register_modules(lua::LuaEngine &engine, LuaModules &modules) noexcept {
 
 } // namespace
 
-[[nodiscard]] std::unique_ptr<LuaModules>
-construct_lua_modules(
+[[nodiscard]] std::unique_ptr<LuaModules> construct_lua_modules(
     const std::filesystem::path &ws_root,
     const std::filesystem::path &build_dir,
     std::span<const std::unique_ptr<module::Module>> yabt_modules) noexcept {
@@ -43,11 +42,13 @@ construct_lua_modules(
 
 runtime::Result<lua::LuaEngine, std::string> prepare_lua_engine(
     const std::filesystem::path &ws_root, LuaModules &lua_modules,
-    std::span<const std::unique_ptr<module::Module>> yabt_modules) noexcept {
+    const std::span<const std::unique_ptr<module::Module>> yabt_modules,
+    const std::span<const LuaPath> extra_paths) noexcept {
   lua::LuaEngine engine = RESULT_PROPAGATE(lua::LuaEngine::construct(ws_root));
   register_modules(engine, lua_modules);
 
   std::vector<std::string> paths;
+  std::vector<std::string> cpaths;
   for (const auto &mod : yabt_modules) {
     const std::optional rules_path = mod->rules_dir();
     if (rules_path.has_value()) {
@@ -56,9 +57,14 @@ runtime::Result<lua::LuaEngine, std::string> prepare_lua_engine(
       paths.push_back(std::move(p.native()));
     }
   }
+  for (const auto &extra_path : extra_paths) {
+    paths.push_back(extra_path.path);
+    cpaths.push_back(extra_path.cpath);
+  }
 
-  yabt_debug("Setting package.path");
   engine.set_path(paths);
+  engine.set_cpath(cpaths);
+
   yabt_debug("Configuring preloads");
   engine.set_preloaded_lua_packages(embed::get_embedded_lua_rules());
   yabt_debug("Configured preloads");
@@ -150,7 +156,7 @@ execute_build(const int threads, const bool compdb,
   auto modules = RESULT_PROPAGATE(workspace::open_workspace(ws_root.value()));
   auto lua_modules = construct_lua_modules(ws_root.value(), build_dir, modules);
   auto lua_engine = RESULT_PROPAGATE(
-      prepare_lua_engine(ws_root.value(), *lua_modules, modules));
+      prepare_lua_engine(ws_root.value(), *lua_modules, modules, {}));
   RESULT_PROPAGATE_DISCARD(invoke_rule_initializers(lua_engine, modules));
   RESULT_PROPAGATE_DISCARD(invoke_build_targets(lua_engine, modules));
 
