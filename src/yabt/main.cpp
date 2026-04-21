@@ -4,8 +4,9 @@
 #include "yabt/cmd/build.h"
 #include "yabt/cmd/clean.h"
 #include "yabt/cmd/help.h"
-#include "yabt/cmd/lsp.h"
 #include "yabt/cmd/list.h"
+#include "yabt/cmd/lsp.h"
+#include "yabt/cmd/rules_test.h"
 #include "yabt/cmd/run.h"
 #include "yabt/cmd/sync.h"
 #include "yabt/cmd/test.h"
@@ -68,6 +69,7 @@ yabt::cmd::SyncCommand sync_cmd;
 yabt::cmd::CleanCommand clean_cmd;
 yabt::cmd::ListCommand list_cmd;
 yabt::cmd::TestCommand test_cmd;
+yabt::cmd::RulesTestCommand rules_cmd;
 
 void register_subcommands(yabt::cli::CliParser &cli_parser) {
   yabt::runtime::check(build_cmd.register_command(cli_parser),
@@ -86,6 +88,8 @@ void register_subcommands(yabt::cli::CliParser &cli_parser) {
                        "Unable to register list command: {}");
   yabt::runtime::check(test_cmd.register_command(cli_parser),
                        "Unable to register test command: {}");
+  yabt::runtime::check(rules_cmd.register_command(cli_parser),
+                       "Unable to register rules_test command: {}");
 }
 
 } // namespace

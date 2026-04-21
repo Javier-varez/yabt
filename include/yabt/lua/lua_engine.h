@@ -53,6 +53,9 @@ public:
   [[nodiscard]] runtime::Result<void, std::string>
   exec_string(const char *string);
 
+  [[nodiscard]] runtime::Result<void, std::string>
+  set_args(std::span<const std::string> args);
+
 private:
   friend int l_do_yabt_preload(lua_State *const L);
 

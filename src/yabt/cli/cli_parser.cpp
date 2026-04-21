@@ -255,6 +255,11 @@ CliParser::parse(const size_t argc, const char *argv[]) const noexcept {
   for (; arg_idx < argc; arg_idx++) {
     std::string_view sv{argv[arg_idx]};
 
+    if (sv == "--") {
+      // Delimiter for unparsed args
+      break;
+    }
+
     if (sv.starts_with("--")) {
       // Long flag, strip prefix
       sv = sv.substr(2);

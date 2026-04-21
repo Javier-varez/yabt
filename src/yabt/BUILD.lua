@@ -22,6 +22,7 @@ targets.lib = cc.Library:new {
         'cmd/test.cpp',
         'cmd/clean.cpp',
         'cmd/list.cpp',
+        'cmd/rules_test.cpp',
         'log/log.cpp',
         'lua/lua_engine.cpp',
         'lua/path_lib.cpp',

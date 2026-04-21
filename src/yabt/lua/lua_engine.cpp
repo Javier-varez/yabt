@@ -130,6 +130,18 @@ LuaEngine::exec_file(std::string_view file_path) {
   return runtime::Result<void, std::string>::ok();
 }
 
+[[nodiscard]] runtime::Result<void, std::string>
+LuaEngine::set_args(std::span<const std::string> args) {
+  lua_newtable(m_state);
+  for (size_t i = 0; i < args.size(); i++) {
+    lua_pushstring(m_state, args[i].c_str());
+    lua_rawseti(m_state, -2, i + 1);
+  }
+  lua_setglobal(m_state, "arg");
+
+  return runtime::Result<void, std::string>::ok();
+}
+
 void LuaEngine::set_preloaded_lua_packages(
     std::map<std::string, std::string_view> packages) {
   m_preloaded_packages = std::move(packages);
