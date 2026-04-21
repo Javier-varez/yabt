@@ -42,6 +42,10 @@ public:
   std::vector<ninja::BuildStep> build_steps;
   std::vector<ninja::BuildStepWithRule> build_steps_with_rule;
   std::map<std::string, ninja::BuildRule> build_rules;
+
+  std::map<std::string, size_t> build_step_map;
+  std::map<std::string, size_t> build_step_with_rule_map;
+
   std::vector<std::string> all_targets;
   std::map<std::string, int> run_fn_refs;  // target -> Lua registry reference
   std::map<std::string, int> test_fn_refs; // target -> Lua registry reference

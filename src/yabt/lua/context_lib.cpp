@@ -38,13 +38,26 @@ runtime::Result<void, std::string> add_build_step_impl(ContextLib &lib) {
 
   const ninja::BuildStep step =
       RESULT_PROPAGATE(parse_lua_object<ninja::BuildStep>(lib.state));
-  lib.build_steps.push_back(step);
   if (step.outs.size() == 0) {
     return runtime::Result<void, std::string>::error(
-        "Attempted to register build_step without an out");
+        std::format("build step does not contain any outputs"));
   }
-  yabt_verbose("Registered build step for: {} with cmd: {}", step.outs[0].path,
-               step.cmd);
+  if (const auto it = lib.build_step_map.find(step.outs.front().path);
+      it != lib.build_step_map.end()) {
+    // Check duplicate
+    const ninja::BuildStep &other = lib.build_steps[it->second];
+    if (other != step) {
+      return runtime::Result<void, std::string>::error(std::format(
+          "Attempted to register conflicting build step for out: {}",
+          step.outs.front().path));
+    }
+  } else {
+    lib.build_steps.push_back(step);
+    lib.build_step_map.insert(
+        std::pair{step.outs.front().path, lib.build_steps.size() - 1});
+    yabt_verbose("Registered build step for: {} with cmd: {}",
+                 step.outs[0].path, step.cmd);
+  }
 
   for (const OutPath &out : step.outs) {
     lib.leaf_paths.insert(out.path);
@@ -104,9 +117,23 @@ add_build_step_with_rule_impl(ContextLib &lib) {
         "Attempted to register build_steps_with_rule without an out");
   }
 
-  lib.build_steps_with_rule.push_back(step);
-  yabt_verbose("Registered build step for: {} with rule: {}", step.outs[0].path,
-               step.rule_name);
+  if (const auto it = lib.build_step_with_rule_map.find(step.outs.front().path);
+      it != lib.build_step_with_rule_map.end()) {
+    // Check duplicate
+    const ninja::BuildStepWithRule &other =
+        lib.build_steps_with_rule[it->second];
+    if (other != step) {
+      return runtime::Result<void, std::string>::error(std::format(
+          "Attempted to register conflicting build step with rule for out: {}",
+          step.outs.front().path));
+    }
+  } else {
+    lib.build_steps_with_rule.push_back(step);
+    lib.build_step_with_rule_map.insert(std::pair{
+        step.outs.front().path, lib.build_steps_with_rule.size() - 1});
+    yabt_verbose("Registered build step for: {} with rule: {}",
+                 step.outs[0].path, step.rule_name);
+  }
 
   for (const OutPath &out : step.outs) {
     lib.leaf_paths.insert(out.path);
