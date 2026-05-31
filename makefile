@@ -1,6 +1,6 @@
 THIS_FILE := $(lastword $(MAKEFILE_LIST))
 
-BUILD_DIR := build
+BUILD_DIR := make_build
 TARGET_NAME := yabt
 
 LUAJIT_LIBS := $(shell pkg-config --libs luajit)
