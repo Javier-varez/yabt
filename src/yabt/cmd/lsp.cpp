@@ -2,6 +2,7 @@
 #include <filesystem>
 #include <fstream>
 #include <span>
+#include <sstream>
 #include <string>
 #include <string_view>
 #include <unistd.h>
