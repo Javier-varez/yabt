@@ -55,14 +55,16 @@ OBJECTS += $(LUA_SRCS:%.lua=$(BUILD_DIR)/%.lua.o)
 
 DEPFILES := $(OBJECTS:%=%.d)
 
-TARGET_ARCH ?= $(shell uname -m)
+HOST_OS := $(shell uname -s)
 
-ifeq ($(TARGET_ARCH),x86_64)
-LD_ARCH := elf_x86_64
-else ifeq ($(TARGET_ARCH),aarch64)
-LD_ARCH := aarch64linux
+# macOS uses different section names for mach-o binaries.
+# Also prefixes all C symbols with an `_`.
+ifeq ($(HOST_OS),Darwin)
+ASM_SECTION := .section __TEXT,__const
+ASM_SYM_PREFIX := _
 else
-$(error Unsupported architecture: $(TARGET_ARCH))
+ASM_SECTION := .section .rodata
+ASM_SYM_PREFIX :=
 endif
 
 all: $(BUILD_DIR)/$(TARGET_NAME)
@@ -80,9 +82,20 @@ $(BUILD_DIR)/$(TARGET_NAME): $(OBJECTS) $(THIS_FILE)
 	@mkdir -p $(dir $@)
 	$(CXX) -o $@ $(CXXFLAGS) $(OBJECTS) $(LDFLAGS)
 
-$(BUILD_DIR)/%.lua.o: SRC_DIR := $(realpath $(dir $(THIS_FILE)))/src
-$(BUILD_DIR)/%.lua.o: %.lua $(THIS_FILE)
+$(BUILD_DIR)/%.lua.S: %.lua $(THIS_FILE)
 	@mkdir -p $(dir $@)
-	cd $(SRC_DIR) && ld -z noexecstack -m $(LD_ARCH) -r -b binary -o $(abspath $@) $(patsubst $(SRC_DIR)/%, %, $(realpath $<))
+	@symbol_name=$$(echo "$(patsubst src/%,%,$<)" | tr '/.' '_'); \
+	{ \
+	    echo '$(ASM_SECTION)'; \
+	    echo '.balign 16'; \
+	    echo ".global $(ASM_SYM_PREFIX)_binary_$${symbol_name}_start"; \
+	    echo "$(ASM_SYM_PREFIX)_binary_$${symbol_name}_start:"; \
+	    printf '\t.incbin "%s"\n' "$(abspath $<)"; \
+	    echo "$(ASM_SYM_PREFIX)_binary_$${symbol_name}_end:"; \
+	    echo ".global $(ASM_SYM_PREFIX)_binary_$${symbol_name}_end"; \
+	} > $@
+
+$(BUILD_DIR)/%.lua.o: $(BUILD_DIR)/%.lua.S $(THIS_FILE)
+	$(CXX) -c -o $@ $<
 
 -include $(DEPFILES)
