@@ -3,9 +3,10 @@ return {
     version = 1,
     deps = {
         yabt_cc_rules = {
-            url = 'https://github.com/Javier-varez/yabt_cc_rules.git',
+            url = 'https://tangled.org/javier.alvarez.engineer/yabt_cc_rules',
             version = 'origin/main',
-            hash = '2526f0261fa5da88bd054bc6e23b609f1f324bab',
+            hash = '026a79b1ded53bd3d28879c97d1eb4347fed917f',
+            type = 'git',
         },
         googletest = {
             url = 'https://github.com/google/googletest.git',
