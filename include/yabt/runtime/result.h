@@ -119,7 +119,7 @@ public:
   }
 
   template <typename Callable, detail::NonVoid T = Ok>
-  [[nodiscard]] auto map_ok(Callable callable) noexcept
+  [[nodiscard]] auto map_ok(Callable callable) const noexcept
       -> Result<decltype(std::declval<Callable>()(std::declval<Ok>())), Err> {
     if (!is_ok()) {
       return {detail::ErrSentinel<Err>{error_value()}};
@@ -128,7 +128,7 @@ public:
   }
 
   template <typename Callable, detail::NonVoid T = Err>
-  [[nodiscard]] auto map_err(Callable callable) noexcept
+  [[nodiscard]] auto map_err(Callable callable) const noexcept
       -> Result<Ok, decltype(std::declval<Callable>()(std::declval<Err>()))> {
     if (!is_error()) {
       return {detail::OkSentinel<Ok>{ok_value()}};
