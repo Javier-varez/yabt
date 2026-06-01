@@ -4,6 +4,7 @@
 
 #include <cstdlib>
 #include <format>
+#include <utility>
 
 namespace yabt::runtime {
 
@@ -31,8 +32,8 @@ template <typename... Args>
 }
 
 template <typename... Args>
-void check(const bool b, std::format_string<Args...> fmt,
-           Args &&...args) noexcept {
+constexpr void check(const bool b, std::format_string<Args...> fmt,
+                     Args &&...args) noexcept {
   if (!b) {
     fatal(fmt, std::forward<Args>(args)...);
   }

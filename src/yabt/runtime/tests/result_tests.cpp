@@ -9,13 +9,13 @@ namespace {
 
 class MoveableOnly {
 public:
-  MoveableOnly(int val) : m_val{val} {};
+  constexpr MoveableOnly(int val) : m_val{val} {};
   MoveableOnly(const MoveableOnly &) = delete;
-  MoveableOnly(MoveableOnly &&) = default;
+  constexpr MoveableOnly(MoveableOnly &&) = default;
   MoveableOnly &operator=(const MoveableOnly &) = delete;
-  MoveableOnly &operator=(MoveableOnly &&) = default;
+  constexpr MoveableOnly &operator=(MoveableOnly &&) = default;
 
-  [[nodiscard]] int val() const { return m_val; }
+  [[nodiscard]] constexpr int val() const { return m_val; }
 
 private:
   int m_val{};
@@ -38,11 +38,77 @@ private:
   int *m_dtor_count;
 };
 
+consteval bool constexpr_construction_and_access() {
+  Result<int, int> ok = Result<int, int>::ok(21);
+  ok.ok_value() += 1;
+
+  const Result<int, int> error = Result<int, int>::error(17);
+  return ok.is_ok() && !ok.is_error() && ok.ok_value() == 22 &&
+         error.is_error() && !error.is_ok() && error.error_value() == 17;
+}
+
+consteval bool constexpr_copy_move_and_assignment() {
+  const Result<int, int> original = Result<int, int>::ok(42);
+  Result<int, int> copy{original};
+  if (!copy.is_ok() || copy.ok_value() != 42)
+    return false;
+
+  Result<int, int> moved{std::move(copy)};
+  if (!moved.is_ok() || moved.ok_value() != 42)
+    return false;
+
+  Result<int, int> target = Result<int, int>::error(1);
+  target = moved;
+  if (!target.is_ok() || target.ok_value() != 42)
+    return false;
+
+  Result<int, int> source = Result<int, int>::error(7);
+  target = std::move(source);
+  return target.is_error() && target.error_value() == 7;
+}
+
+consteval bool constexpr_void_results() {
+  const Result<void, void> ok = Result<void, void>::ok();
+  const Result<void, void> error = Result<void, void>::error();
+  const Result<void, int> payload_error = Result<void, int>::error(3);
+  const Result<int, void> payload_ok = Result<int, void>::ok(5);
+
+  return ok.is_ok() && error.is_error() && payload_error.is_error() &&
+         payload_error.error_value() == 3 && payload_ok.is_ok() &&
+         payload_ok.ok_value() == 5;
+}
+
+consteval bool constexpr_map_operations() {
+  const Result<int, int> ok = Result<int, int>::ok(11);
+  const Result<int, int> mapped_ok = ok.map_ok([](int val) { return val * 2; });
+  if (!mapped_ok.is_ok() || mapped_ok.ok_value() != 22)
+    return false;
+
+  const Result<int, int> error = Result<int, int>::error(4);
+  const Result<int, int> mapped_error =
+      error.map_err([](int val) { return val + 3; });
+  return mapped_error.is_error() && mapped_error.error_value() == 7;
+}
+
+consteval bool constexpr_move_only_result() {
+  Result<MoveableOnly, void> result = Result<MoveableOnly, void>::ok(9);
+  Result<MoveableOnly, void> moved{std::move(result)};
+  MoveableOnly value = std::move(moved).ok_value();
+  return value.val() == 9;
+}
+
 } // namespace
 
+TEST(ResultTest, ConstexprOperations) {
+  EXPECT_TRUE(constexpr_construction_and_access());
+  EXPECT_TRUE(constexpr_copy_move_and_assignment());
+  EXPECT_TRUE(constexpr_void_results());
+  EXPECT_TRUE(constexpr_map_operations());
+  EXPECT_TRUE(constexpr_move_only_result());
+}
+
 TEST(ResultTest, VoidConstruction) {
-  // FIXME: This should actually be smaller
-  static_assert(sizeof(Result<void, void>) == sizeof(bool) + sizeof(uint8_t));
+  static_assert(sizeof(Result<void, void>) == sizeof(bool));
   {
     const Result<void, void> result = Result<void, void>::ok();
     EXPECT_TRUE(result.is_ok());
