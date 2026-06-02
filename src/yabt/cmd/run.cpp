@@ -49,25 +49,9 @@ RunCommand::register_command(cli::CliParser &cli_parser) noexcept {
 
 [[nodiscard]] runtime::Result<void, std::string> RunCommand::handle_subcommand(
     std::span<const std::string_view> unparsed_args) noexcept {
-  // Split on ':'. Everything before is a target pattern. Everything after
-  // are arguments to the run method.
-  std::span<const std::string_view> target_patterns;
-  std::span<const std::string_view> run_args;
-
-  using std::string_view_literals::operator""sv;
-  if (const auto iter =
-          std::find(unparsed_args.begin(), unparsed_args.end(), ":"sv);
-      iter != unparsed_args.end()) {
-    const size_t pos = iter - unparsed_args.begin();
-    run_args = unparsed_args.subspan(pos + 1);
-    target_patterns = unparsed_args.subspan(0, pos);
-  } else {
-    target_patterns = unparsed_args;
-  }
-
-  if (const runtime::Result result =
-          build::execute_build(m_threads, false, m_build_dir, target_patterns,
-                               build::PostBuildMode::Run, run_args);
+  const build::BuildArgs build_args = build::parse_args(unparsed_args);
+  if (const runtime::Result result = build::execute_build(
+          m_threads, false, m_build_dir, build_args, build::PostBuildMode::Run);
       result.is_error()) {
     yabt_error("Run failed: {}", result.error_value());
     exit(EXIT_FAILURE);

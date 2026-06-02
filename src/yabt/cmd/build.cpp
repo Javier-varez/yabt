@@ -2,6 +2,7 @@
 #include <string>
 #include <string_view>
 
+#include "yabt/build/args.h"
 #include "yabt/build/build.h"
 #include "yabt/cli/args.h"
 #include "yabt/cmd/build.h"
@@ -63,9 +64,10 @@ BuildCommand::register_command(cli::CliParser &cli_parser) noexcept {
 
 [[nodiscard]] runtime::Result<void, std::string>
 BuildCommand::handle_subcommand(
-    std::span<const std::string_view> target_patterns) noexcept {
-  if (runtime::Result result = build::execute_build(
-          m_threads, m_compdb, m_build_dir, target_patterns);
+    std::span<const std::string_view> arguments) noexcept {
+  const build::BuildArgs build_args = build::parse_args(arguments);
+  if (runtime::Result result =
+          build::execute_build(m_threads, m_compdb, m_build_dir, build_args);
       result.is_error()) {
     yabt_error("Build failed: {}", result.error_value());
     exit(EXIT_FAILURE);

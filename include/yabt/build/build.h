@@ -7,6 +7,7 @@
 #include <string>
 #include <string_view>
 
+#include "yabt/build/args.h"
 #include "yabt/lua/context_lib.h"
 #include "yabt/lua/log_lib.h"
 #include "yabt/lua/lua_engine.h"
@@ -24,9 +25,8 @@ enum class PostBuildMode { None, Run, Test };
 [[nodiscard]] runtime::Result<void, std::string>
 execute_build(int threads, bool compdb,
               const std::optional<std::filesystem::path> &requested_build_dir,
-              std::span<const std::string_view> target_patterns,
-              PostBuildMode mode = PostBuildMode::None,
-              std::span<const std::string_view> action_args = {});
+              const BuildArgs &build_args,
+              PostBuildMode mode = PostBuildMode::None);
 
 struct LuaModules final {
   lua::PathLib pathlib;

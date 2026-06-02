@@ -137,9 +137,7 @@ runtime::Result<lua::LuaEngine, std::string> prepare_lua_engine(
 [[nodiscard]] runtime::Result<void, std::string>
 execute_build(const int threads, const bool compdb,
               const std::optional<std::filesystem::path> &requested_build_dir,
-              const std::span<const std::string_view> target_patterns,
-              const PostBuildMode mode,
-              const std::span<const std::string_view> action_args) {
+              const BuildArgs &build_args, const PostBuildMode mode) {
   const std::optional<std::filesystem::path> ws_root =
       workspace::get_workspace_root();
   if (!ws_root.has_value()) {
@@ -192,14 +190,9 @@ execute_build(const int threads, const bool compdb,
   }
 
   // Find all matching targets for a pattern
-  std::vector<std::regex> patterns;
-  for (const std::string_view target_pattern : target_patterns) {
-    patterns.emplace_back(std::string{target_pattern});
-  }
-
   std::vector<std::string> targets{};
   for (const std::string &target : lua_modules->contextlib.all_targets) {
-    for (const std::regex &regex : patterns) {
+    for (const std::regex &regex : build_args.target_patterns) {
       if (std::regex_match(target, regex)) {
         targets.push_back(target);
         break; // don't add a target more than once
@@ -229,7 +222,7 @@ execute_build(const int threads, const bool compdb,
       if (mode == PostBuildMode::Run) {
         yabt_verbose("Collecting run arguments for {}", target);
         exec_argv = RESULT_PROPAGATE(
-            lua_modules->contextlib.call_run_fn(target, action_args));
+            lua_modules->contextlib.call_run_fn(target, build_args.exec_args));
       } else if (mode == PostBuildMode::Test) {
         // FIXME: This should be handled inside call_run_fn and call_test_fn
         if (!lua_modules->contextlib.test_fn_refs.contains(target)) {
@@ -238,7 +231,7 @@ execute_build(const int threads, const bool compdb,
         }
         yabt_verbose("Collecting test arguments for {}", target);
         exec_argv = RESULT_PROPAGATE(
-            lua_modules->contextlib.call_test_fn(target, action_args));
+            lua_modules->contextlib.call_test_fn(target, build_args.exec_args));
       }
 
       std::string arg_string = "";

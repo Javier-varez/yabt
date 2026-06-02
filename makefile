@@ -32,6 +32,7 @@ SRCS := src/yabt/main.cpp                            \
     src/yabt/module/git_module.cpp                   \
     src/yabt/workspace/utils.cpp                     \
     src/yabt/ninja/ninja.cpp                         \
+    src/yabt/build/args.cpp                          \
     src/yabt/build/build.cpp                         \
     src/yabt/embed/embed.cpp                         \
     src/yabt/embed/runtime.lua                       \
