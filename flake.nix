@@ -29,27 +29,38 @@
           };
         in
         rec {
-          yabt = pkgs.stdenv.mkDerivation {
+          yabt = pkgs.stdenv.mkDerivation rec {
             pname = "yabt";
             version = "0.0.1";
 
-            src = ./.;
+            src = pkgs.runCommand "make-src" {
+              nativeBuildInputs = [ pkgs.git ];
+            } "mkdir -p $out/yabt && cp -r ${./.}/* $out/yabt/ && git -C $out/yabt/ init";
+
+            sourceRoot = "${src}/yabt";
 
             buildInputs = with pkgs; [
               gcc
-              (luajit.withPackages (ps: with ps; [ busted ]))
               pkg-config
               gnumake
+              cacert
+              curl
             ];
             nativeBuildInputs = with pkgs; [
               ninja
               git
+              (luajit.withPackages (ps: with ps; [ busted ]))
             ];
+
             buildPhase = ''
               make -j$(nproc)
+              ./make_build/yabt sync
+              ./make_build/yabt build --build-dir=BUILD_STAGE1 '//yabt/.*'
+              ./BUILD_STAGE1/src/yabt/yabt build --build-dir=BUILD_STAGE2 '//yabt/.*'
             '';
             installPhase = ''
-              install -m 0755 make_build/yabt $out
+              install -d $out/bin
+              install -m 0755 BUILD_STAGE2/src/yabt/yabt $out/bin/yabt
             '';
           };
           default = yabt;
