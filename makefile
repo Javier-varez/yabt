@@ -86,6 +86,7 @@ $(BUILD_DIR)/%.lua.S: %.lua $(THIS_FILE)
 	@mkdir -p $(dir $@)
 	@symbol_name=$$(echo "$(patsubst src/%,%,$<)" | tr '/.' '_'); \
 	{ \
+	    echo '.section .note.GNU-stack,"",@progbits'; \
 	    echo '$(ASM_SECTION)'; \
 	    echo '.balign 16'; \
 	    echo ".global $(ASM_SYM_PREFIX)_binary_$${symbol_name}_start"; \

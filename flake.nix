@@ -49,7 +49,7 @@
               make -j$(nproc)
             '';
             installPhase = ''
-              install -m 0755 build/yabt $out
+              install -m 0755 make_build/yabt $out
             '';
           };
           default = yabt;
