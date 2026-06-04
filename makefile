@@ -62,9 +62,11 @@ HOST_OS := $(shell uname -s)
 ifeq ($(HOST_OS),Darwin)
 ASM_SECTION := .section __TEXT,__const
 ASM_SYM_PREFIX := _
+ASM_GNU_STACK :=
 else
 ASM_SECTION := .section .rodata
 ASM_SYM_PREFIX :=
+ASM_GNU_STACK := .section .note.GNU-stack,"",@progbits
 endif
 
 all: $(BUILD_DIR)/$(TARGET_NAME)
@@ -86,7 +88,7 @@ $(BUILD_DIR)/%.lua.S: %.lua $(THIS_FILE)
 	@mkdir -p $(dir $@)
 	@symbol_name=$$(echo "$(patsubst src/%,%,$<)" | tr '/.' '_'); \
 	{ \
-	    echo '.section .note.GNU-stack,"",@progbits'; \
+	    echo '$(ASM_GNU_STACK)'; \
 	    echo '$(ASM_SECTION)'; \
 	    echo '.balign 16'; \
 	    echo ".global $(ASM_SYM_PREFIX)_binary_$${symbol_name}_start"; \

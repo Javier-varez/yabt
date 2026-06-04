@@ -5,7 +5,7 @@ return {
         yabt_cc_rules = {
             url = 'https://tangled.org/javier.alvarez.engineer/yabt_cc_rules',
             version = 'origin/main',
-            hash = '026a79b1ded53bd3d28879c97d1eb4347fed917f',
+            hash = '0871dcf2a9489b29a3c8da59aad480562067d11d',
             type = 'git',
         },
         googletest = {
