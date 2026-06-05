@@ -137,6 +137,12 @@ sync_workspace(std::filesystem::path ws_root,
   return runtime::Result<void, std::string>::ok();
 }
 
+[[nodiscard]] runtime::Result<module::ModuleFile, std::string>
+load_root_module_file(const std::filesystem::path &ws_root) noexcept {
+  const std::filesystem::path modfile_path = ws_root / module::MODULE_FILE_NAME;
+  return module::ModuleFile::load_module_file(modfile_path);
+}
+
 runtime::Result<std::vector<std::unique_ptr<module::Module>>, std::string>
 open_workspace(const std::filesystem::path &ws_root) noexcept {
   const std::filesystem::path deps_dir = ws_root / DEPS_DIR_NAME;

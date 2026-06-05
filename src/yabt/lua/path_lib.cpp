@@ -25,7 +25,7 @@ void init_registry(lua_State *const L, PathLib *data) {
   lua_settable(L, LUA_REGISTRYINDEX);
 }
 
-PathLib *get_lib_from_registry(lua_State *const L) {
+[[nodiscard]] PathLib *get_lib_from_registry(lua_State *const L) {
   lua_pushlightuserdata(L, &registry_key);
   lua_gettable(L, LUA_REGISTRYINDEX);
   PathLib *lib = static_cast<PathLib *>(lua_touserdata(L, -1));

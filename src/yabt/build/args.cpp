@@ -3,15 +3,15 @@
 namespace yabt::build {
 
 namespace {
-[[nodiscard]] std::pair<std::vector<std::regex>, std::vector<BuildFlag>>
+[[nodiscard]] std::pair<std::vector<std::regex>, std::vector<lua::RawFlag>>
 parse_build_args(std::span<const std::string_view> arguments) noexcept {
-  std::vector<BuildFlag> flags;
+  std::vector<lua::RawFlag> flags;
   std::vector<std::regex> patterns;
   for (const std::string_view arg : arguments) {
     const size_t delimiter = arg.find_first_of('=');
     if (delimiter != std::string_view::npos) {
-      flags.push_back(BuildFlag{.key{arg.substr(0, delimiter)},
-                                .value{arg.substr(delimiter + 1)}});
+      flags.push_back(lua::RawFlag{.key{arg.substr(0, delimiter)},
+                                   .value{arg.substr(delimiter + 1)}});
     } else {
       patterns.emplace_back(std::string{arg});
     }

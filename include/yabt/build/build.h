@@ -9,6 +9,7 @@
 
 #include "yabt/build/args.h"
 #include "yabt/lua/context_lib.h"
+#include "yabt/lua/flag_lib.h"
 #include "yabt/lua/log_lib.h"
 #include "yabt/lua/lua_engine.h"
 #include "yabt/lua/path_lib.h"
@@ -32,6 +33,7 @@ struct LuaModules final {
   lua::PathLib pathlib;
   lua::ContextLib contextlib;
   lua::LogLib loglib;
+  lua::FlagLib flaglib;
 };
 
 struct LuaPath {

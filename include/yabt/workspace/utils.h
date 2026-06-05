@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "yabt/module/module.h"
+#include "yabt/module/module_file.h"
 #include "yabt/runtime/result.h"
 
 namespace yabt::workspace {
@@ -27,5 +28,8 @@ sync_workspace(std::filesystem::path ws_root, SyncMode) noexcept;
 
 runtime::Result<std::vector<std::unique_ptr<module::Module>>, std::string>
 open_workspace(const std::filesystem::path &ws_root) noexcept;
+
+[[nodiscard]] runtime::Result<module::ModuleFile, std::string>
+load_root_module_file(const std::filesystem::path &ws_root) noexcept;
 
 } // namespace yabt::workspace

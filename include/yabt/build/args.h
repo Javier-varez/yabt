@@ -5,16 +5,13 @@
 #include <string_view>
 #include <vector>
 
-namespace yabt::build {
+#include "yabt/lua/flag_lib.h"
 
-struct BuildFlag {
-  std::string key;
-  std::string value;
-};
+namespace yabt::build {
 
 struct BuildArgs {
   std::vector<std::regex> target_patterns;
-  std::vector<BuildFlag> flags;
+  std::vector<lua::RawFlag> flags;
   std::span<const std::string_view> exec_args;
 };
 

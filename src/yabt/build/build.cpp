@@ -20,6 +20,7 @@ void register_modules(lua::LuaEngine &engine, LuaModules &modules) noexcept {
   engine.register_lua_module(modules.pathlib);
   engine.register_lua_module(modules.contextlib);
   engine.register_lua_module(modules.loglib);
+  engine.register_lua_module(modules.flaglib);
 }
 
 } // namespace
@@ -37,6 +38,7 @@ void register_modules(lua::LuaEngine &engine, LuaModules &modules) noexcept {
       .pathlib{ws_root, build_dir, std::move(module_paths)},
       .contextlib{},
       .loglib{},
+      .flaglib{},
   });
 }
 
@@ -134,6 +136,24 @@ runtime::Result<lua::LuaEngine, std::string> prepare_lua_engine(
   return engine.exec_string(std::string{embed::get_runtime_file()}.c_str());
 }
 
+std::vector<lua::RawFlag>
+merge_yabt_flags(const BuildArgs &build_args,
+                 const module::ModuleFile &module_file) {
+  std::vector flags{build_args.flags};
+  const auto contained = [&flags](const std::string &name) {
+    auto iter = std::find_if(
+        flags.begin(), flags.end(),
+        [&name](const lua::RawFlag &inner) { return inner.key == name; });
+    return iter != flags.cend();
+  };
+  for (const auto &[name, value] : module_file.flags) {
+    if (!contained(name)) {
+      flags.push_back(lua::RawFlag{.key{name}, .value{value}});
+    }
+  }
+  return flags;
+}
+
 [[nodiscard]] runtime::Result<void, std::string>
 execute_build(const int threads, const bool compdb,
               const std::optional<std::filesystem::path> &requested_build_dir,
@@ -152,10 +172,23 @@ execute_build(const int threads, const bool compdb,
           ws_root.value() / workspace::BUILD_DIR_NAME));
 
   auto modules = RESULT_PROPAGATE(workspace::open_workspace(ws_root.value()));
+
+  const module::ModuleFile mod_file =
+      RESULT_PROPAGATE(workspace::load_root_module_file(ws_root.value()));
+
   auto lua_modules = construct_lua_modules(ws_root.value(), build_dir, modules);
   auto lua_engine = RESULT_PROPAGATE(
       prepare_lua_engine(ws_root.value(), *lua_modules, modules, {}));
   RESULT_PROPAGATE_DISCARD(invoke_rule_initializers(lua_engine, modules));
+
+  const auto flags = merge_yabt_flags(build_args, mod_file);
+  RESULT_PROPAGATE_DISCARD(lua_modules->flaglib.resolve_flag_values(flags));
+  for (const auto &[name, value] : lua_modules->flaglib.flag_values()) {
+    auto v = std::visit(
+        [](const auto value) { return std::format("{}", value); }, value);
+    yabt_debug("Flag \"{}\": \"{}\"", name, v);
+  }
+
   RESULT_PROPAGATE_DISCARD(invoke_build_targets(lua_engine, modules));
 
   const std::filesystem::path ninja_file =

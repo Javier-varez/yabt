@@ -17,6 +17,10 @@ local gtest_src_include = gtest_path('googletest')
 local gtest_out = gtest_src_include:with_ext('/libgtest.a')
 local gtest_main_out = gtest_src_include:with_ext('/libgtest_main.a')
 
+local gmock_include = gtest_path('googlemock/include')
+local gmock_src_include = gtest_path('googlemock')
+local gmock_out = gmock_src_include:with_ext('/libgmock.a')
+
 -- Singletons shared across all GtestBinary targets in one build.
 -- Created lazily inside GtestBinary:new (where MODULE_PATH is set).
 
@@ -26,10 +30,13 @@ local gtest_lib = nil
 ---@type CcLibrary
 local gtest_main_lib = nil
 
+---@type CcLibrary
+local gmock_lib = nil
+
 ---@type boolean
 local gtest_libs_built = false
 
--- Create the gtest and gtest_main library objects if not done yet.
+-- Create the gtest, gtest_main, and gmock library objects if not done yet.
 -- Must be called when MODULE_PATH is available (i.e. during BUILD.lua execution).
 local function ensure_gtest_libs_exist()
     if gtest_lib ~= nil then return end
@@ -44,6 +51,12 @@ local function ensure_gtest_libs_exist()
         out = gtest_main_out,
         srcs = { gtest_path('googletest/src/gtest_main.cc') },
         includes = { gtest_include },
+    }
+
+    gmock_lib = cc.Library:new {
+        out = gmock_out,
+        srcs = { gtest_path('googlemock/src/gmock-all.cc') },
+        includes = { gtest_include, gmock_include, gmock_src_include },
     }
 end
 
@@ -68,6 +81,7 @@ function GtestBinary:new(bin)
     bin.deps = bin.deps or {}
     table.insert(bin.deps, gtest_lib)
     table.insert(bin.deps, gtest_main_lib)
+    table.insert(bin.deps, gmock_lib)
 
     bin.ldflags_post = bin.ldflags_post or {}
     table.insert(bin.ldflags_post, '-lpthread')
@@ -97,6 +111,7 @@ function GtestBinary:build(ctx)
         ensure_gtest_libs_exist()
         gtest_lib:build(ctx)
         gtest_main_lib:build(ctx)
+        gmock_lib:build(ctx)
         gtest_libs_built = true
     end
     self.binary:build(ctx)

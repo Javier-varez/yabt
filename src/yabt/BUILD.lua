@@ -8,7 +8,7 @@ local embed = import 'yabt/embed'
 local rules = import 'yabt/embed/rules'
 local stubs = import 'yabt/embed/lua_stubs'
 
-targets.lib = cc.Library:new {
+targets.Lib = cc.Library:new {
     out = out('yabt.a'),
     srcs = ins(
         'build/args.cpp',
@@ -30,6 +30,7 @@ targets.lib = cc.Library:new {
         'lua/log_lib.cpp',
         'lua/lua_engine.cpp',
         'lua/path_lib.cpp',
+        'lua/flag_lib.cpp',
         'module/git_module.cpp',
         'module/module.cpp',
         'module/module_file.cpp',
@@ -47,7 +48,7 @@ targets.Bin = cc.Binary:new {
         'main.cpp'
     ),
     deps = {
-        targets.lib,
+        targets.Lib,
         embed.Blob,
         rules.Utils,
         stubs.ContextBlob,

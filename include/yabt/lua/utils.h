@@ -55,8 +55,11 @@ template <typename T> struct LuaArray final {};
 struct LuaString final {};
 struct LuaInteger final {};
 struct LuaBoolean final {};
+struct LuaPtr final {};
 
 template <typename T> struct LuaUserData final {};
+
+template <typename T> struct LuaNullable final {};
 
 // Parsing spec type marker
 template <typename T> struct LuaParseSpec;
@@ -82,12 +85,20 @@ template <> struct LuaParseSpec<bool> {
   using spec = LuaBoolean;
 };
 
+template <> struct LuaParseSpec<void *> {
+  using spec = LuaPtr;
+};
+
 template <> struct LuaParseSpec<Path> {
   using spec = LuaUserData<Path>;
 };
 
 template <> struct LuaParseSpec<OutPath> {
   using spec = LuaUserData<OutPath>;
+};
+
+template <typename T> struct LuaParseSpec<std::optional<T>> {
+  using spec = LuaNullable<T>;
 };
 
 template <typename T>
@@ -110,6 +121,19 @@ parse_with_spec(lua_State *const L, LuaInteger);
 
 [[nodiscard]] runtime::Result<bool, std::string>
 parse_with_spec(lua_State *const L, LuaBoolean);
+
+[[nodiscard]] runtime::Result<void *, std::string>
+parse_with_spec(lua_State *const L, LuaPtr);
+
+template <typename T>
+[[nodiscard]] runtime::Result<std::optional<T>, std::string>
+parse_with_spec(lua_State *const L, LuaNullable<T>);
+
+[[nodiscard]] runtime::Result<Path, std::string>
+parse_with_spec(lua_State *const L, LuaUserData<Path>);
+
+[[nodiscard]] runtime::Result<OutPath, std::string>
+parse_with_spec(lua_State *const L, LuaUserData<OutPath>);
 
 template <typename T>
 [[nodiscard]] runtime::Result<T, std::string>
@@ -253,7 +277,6 @@ parse_with_spec(lua_State *const L, LuaInteger) {
 parse_with_spec(lua_State *const L, LuaBoolean) {
   StackGuard g{L};
   if (lua_isnil(L, -1)) {
-    // Empty string
     return runtime::Result<bool, std::string>::ok(false);
   }
 
@@ -267,11 +290,30 @@ parse_with_spec(lua_State *const L, LuaBoolean) {
       static_cast<bool>(lua_toboolean(L, -1)));
 }
 
-[[nodiscard]] runtime::Result<Path, std::string>
-parse_with_spec(lua_State *const L, LuaUserData<Path>);
+[[nodiscard]] inline runtime::Result<void *, std::string>
+parse_with_spec(lua_State *const L, LuaPtr) {
+  StackGuard g{L};
+  if (!lua_islightuserdata(L, -1)) {
+    return runtime::Result<void *, std::string>::error(
+        std::format("Deserializing void*, but found type {}",
+                    lua_typename(L, lua_type(L, -1))));
+  }
 
-[[nodiscard]] runtime::Result<OutPath, std::string>
-parse_with_spec(lua_State *const L, LuaUserData<OutPath>);
+  return runtime::Result<void *, std::string>::ok(lua_touserdata(L, -1));
+}
+
+template <typename T>
+[[nodiscard]] runtime::Result<std::optional<T>, std::string>
+parse_with_spec(lua_State *const L, LuaNullable<T>) {
+  StackGuard g{L};
+  if (lua_isnil(L, -1)) {
+    return runtime::Result<std::optional<T>, std::string>::ok(std::nullopt);
+  }
+
+  const T inner = RESULT_PROPAGATE(parse_lua_object<T>(L));
+  return runtime::Result<std::optional<T>, std::string>::ok(
+      std::optional{inner});
+}
 
 #define _REMOVE_PARENS_IMPL(...) __VA_ARGS__
 #define _REMOVE_PARENS(...) _REMOVE_PARENS_IMPL __VA_ARGS__
@@ -299,6 +341,9 @@ parse_with_spec(lua_State *const L, LuaUserData<OutPath>);
 #define _APPLY_OP_VA_ARGS5(op, fixed_arg, first, ...)                          \
   _APPLY_OP_VA_ARGS1(op, fixed_arg, first)                                     \
   _APPLY_OP_VA_ARGS4(op, fixed_arg, __VA_ARGS__)
+#define _APPLY_OP_VA_ARGS6(op, fixed_arg, first, ...)                          \
+  _APPLY_OP_VA_ARGS1(op, fixed_arg, first)                                     \
+  _APPLY_OP_VA_ARGS5(op, fixed_arg, __VA_ARGS__)
 
 #define _APPLY_OP_VA_ARGS_IMPL(nargs, op, fixed_arg, ...)                      \
   _JOIN(_APPLY_OP_VA_ARGS, nargs)(op, fixed_arg, __VA_ARGS__)
