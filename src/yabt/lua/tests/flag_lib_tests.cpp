@@ -279,6 +279,40 @@ TEST_F(FlagLibTests, RequiredFlagNotGiven) {
   EXPECT_EQ(result.error_value(), "No value given for flag \"cc_toolchain\"");
 }
 
+TEST_F(FlagLibTests, AllFlagDefaults) {
+  {
+    const runtime::Result result = m_engine.exec_string(R"(
+      local flags = require 'yabt.core.flags'
+
+      flags.register {
+        name = 'build_type',
+        description = 'Build type',
+        type = flags.EnumFlag,
+        values = { 'debug', 'release' },
+        default_value = 'release',
+      }
+
+      flags.register {
+        name = 'cc_toolchain',
+        description = 'C++ toolchain',
+        type = flags.StringFlag,
+        default_value = 'gcc',
+      }
+    )");
+    ASSERT_TRUE(result.is_ok());
+  }
+
+  const auto result = m_flag_lib.resolve_flag_values(std::array<RawFlag, 0>{});
+  ASSERT_TRUE(result.is_ok());
+  auto flags = m_flag_lib.flag_values();
+
+  ASSERT_TRUE(flags.contains("build_type"));
+  EXPECT_EQ(flags["build_type"], FlagValue{std::string{"release"}});
+
+  ASSERT_TRUE(flags.contains("cc_toolchain"));
+  EXPECT_EQ(flags["cc_toolchain"], FlagValue{std::string{"gcc"}});
+}
+
 TEST_F(FlagLibTests, TestRetrieveValue) {
   {
     const runtime::Result result = m_engine.exec_string(R"(

@@ -429,8 +429,8 @@ FlagLib::resolve_flag_values(const std::span<const RawFlag> flags) noexcept {
   }
 
   // Validate that all flags are present, otherwise inject defaults
-  for (const auto &[key, spec] : m_registered_flags) {
-    if (m_resolved_flags.contains(key)) {
+  for (const auto &[name, spec] : m_registered_flags) {
+    if (m_resolved_flags.contains(name)) {
       continue;
     }
 
@@ -438,13 +438,13 @@ FlagLib::resolve_flag_values(const std::span<const RawFlag> flags) noexcept {
         std::visit([](const auto &v) { return v.default_value; }, spec);
     if (default_value.has_value()) {
       const FlagValue resolved_flag = RESULT_PROPAGATE(resolve_flag(
-          spec, RawFlag{.key{key}, .value{default_value.value()}}));
-      m_resolved_flags[key] = resolved_flag;
-      break;
+          spec, RawFlag{.key{name}, .value{default_value.value()}}));
+      m_resolved_flags[name] = resolved_flag;
+      continue;
     }
 
     return runtime::Result<void, std::string>::error(
-        std::format("No value given for flag \"{}\"", key));
+        std::format("No value given for flag \"{}\"", name));
   }
 
   return runtime::Result<void, std::string>::ok();
