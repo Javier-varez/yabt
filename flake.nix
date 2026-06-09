@@ -27,9 +27,7 @@
           pkgs = import nixpkgs {
             inherit system;
           };
-        in
-        rec {
-          yabt = pkgs.stdenv.mkDerivation rec {
+          yabt-pkg = { toolchain ? "gcc" }: pkgs.stdenv.mkDerivation rec {
             pname = "yabt";
             version = "0.0.1";
 
@@ -41,6 +39,8 @@
 
             buildInputs = with pkgs; [
               gcc
+              clang
+              llvm
               pkg-config
               gnumake
               cacert
@@ -55,14 +55,18 @@
             buildPhase = ''
               make -j$(nproc)
               ./make_build/yabt sync
-              ./make_build/yabt build --build-dir=BUILD_STAGE1 '//yabt/.*'
-              ./BUILD_STAGE1/src/yabt/yabt build --build-dir=BUILD_STAGE2 '//yabt/.*'
+              ./make_build/yabt build --build-dir=BUILD_STAGE1 '//yabt/.*' cc_toolchain=${toolchain}
+              ./BUILD_STAGE1/src/yabt/yabt build --build-dir=BUILD_STAGE2 '//yabt/.*' cc_toolchain=${toolchain}
             '';
             installPhase = ''
               install -d $out/bin
               install -m 0755 BUILD_STAGE2/src/yabt/yabt $out/bin/yabt
             '';
           };
+        in
+        rec {
+          yabt = yabt-pkg {};
+          yabt-clang = yabt-pkg { toolchain = "clang"; };
           default = yabt;
         }
       );
@@ -77,6 +81,8 @@
           yabt = pkgs.mkShell {
             nativeBuildInputs = with pkgs; [
               # build deps (busted is needed for testing)
+              clang
+              llvm
               gcc
               (luajit.withPackages (ps: with ps; [ busted ]))
               pkg-config
