@@ -23,6 +23,37 @@ exec_git_command(Args &&...args) noexcept {
   return runtime::Result<process::Process::ProcessOutput, std::string>::ok(
       git_proc.process_output());
 }
+
+// Validates a dependency URL before it is handed to `git clone`. This guards
+// against two distinct injection vectors:
+//
+//   1. Option injection: because the URL is passed as a positional argument,
+//      a value beginning with '-' would be parsed by git as a flag (e.g.
+//      `--upload-pack=<cmd>`). We also pass a `--` separator at the call site
+//      as defense in depth.
+//   2. Remote-helper transports: git's `ext::`/`fd::` (and similar
+//      `transport::address`) syntax can execute arbitrary commands. Standard
+//      URLs use `scheme://` or scp-like `user@host:path` and never contain a
+//      bare `::`, so we reject any URL that does.
+[[nodiscard]] runtime::Result<void, std::string>
+validate_git_url(std::string_view mod_url) noexcept {
+  if (mod_url.empty()) {
+    return runtime::Result<void, std::string>::error("Dependency URL is empty");
+  }
+  if (mod_url.front() == '-') {
+    return runtime::Result<void, std::string>::error(std::format(
+        "Refusing to clone dependency URL that looks like a command-line "
+        "option: {}",
+        mod_url));
+  }
+  if (mod_url.find("::") != std::string_view::npos) {
+    return runtime::Result<void, std::string>::error(std::format(
+        "Refusing to clone dependency URL using a git remote-helper transport "
+        "(contains \"::\"): {}",
+        mod_url));
+  }
+  return runtime::Result<void, std::string>::ok();
+}
 } // namespace
 
 runtime::Result<std::unique_ptr<Module>, std::string>
@@ -48,8 +79,10 @@ GitModule::open_or_fetch_module(const std::filesystem::path &mod_dir,
     return GitModule::open(mod_dir);
   }
 
-  const ProcessOutput process_output =
-      RESULT_PROPAGATE(exec_git_command("clone", mod_url, mod_dir.native()));
+  RESULT_PROPAGATE_DISCARD(validate_git_url(mod_url));
+
+  const ProcessOutput process_output = RESULT_PROPAGATE(
+      exec_git_command("clone", "--", mod_url, mod_dir.native()));
   if (runtime::Result result = process_output.to_result(); result.is_error()) {
     yabt_error("Error cloning git module {}\nstderr: {}", mod_url,
                process_output.stderr.value_or(""));

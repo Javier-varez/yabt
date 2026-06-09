@@ -13,6 +13,28 @@
 
 namespace yabt::workspace {
 
+namespace {
+
+// A dependency name is used directly as a directory name under DEPS/. Because
+// it originates from a (possibly transitively fetched, untrusted) module file,
+// it must not be allowed to escape the deps directory. Reject anything that is
+// not a single, plain path component.
+[[nodiscard]] runtime::Result<void, std::string>
+validate_dep_name(std::string_view dep_name) noexcept {
+  if (dep_name.empty() || dep_name == "." || dep_name == "..") {
+    return runtime::Result<void, std::string>::error(
+        std::format("Invalid dependency name: \"{}\"", dep_name));
+  }
+  if (dep_name.find('/') != std::string_view::npos ||
+      dep_name.find('\\') != std::string_view::npos) {
+    return runtime::Result<void, std::string>::error(std::format(
+        "Dependency name must be a single path component: \"{}\"", dep_name));
+  }
+  return runtime::Result<void, std::string>::ok();
+}
+
+} // namespace
+
 [[nodiscard]] std::optional<std::filesystem::path>
 get_workspace_root() noexcept {
   std::filesystem::path cur_dir = std::filesystem::current_path();
@@ -75,6 +97,7 @@ sync_workspace(std::filesystem::path ws_root,
       yabt_debug("Processing {}", dep_name);
       log::IndentGuard _indent_guard{};
 
+      RESULT_PROPAGATE_DISCARD(validate_dep_name(dep_name));
       const std::filesystem::path dep_dir = deps_dir / dep_name;
       auto module = RESULT_PROPAGATE(
           module::open_or_fetch_module(dep_dir, dep.url, dep.type, dep.hash));
@@ -177,6 +200,7 @@ open_workspace(const std::filesystem::path &ws_root) noexcept {
 
     for (const auto &[dep_name, dep] : modfile.deps) {
       log::IndentGuard _indent_guard{};
+      RESULT_PROPAGATE_DISCARD(validate_dep_name(dep_name));
       const std::filesystem::path dep_dir = deps_dir / dep_name;
 
       if (dep.external) {
