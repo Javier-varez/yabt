@@ -12,18 +12,18 @@ std::optional<std::filesystem::path> Module::rules_dir() const noexcept {
   return std::nullopt;
 }
 
-[[nodiscard]] runtime::Result<std::unique_ptr<Module>, std::string>
+[[nodiscard]] runtime::Result<std::unique_ptr<Module>>
 open_module(const std::filesystem::path &mod_dir) {
   if (const std::filesystem::path git_dir = mod_dir / ".git";
       std::filesystem::exists(git_dir)) {
     return GitModule::open(mod_dir);
   }
 
-  return runtime::Result<std::unique_ptr<Module>, std::string>::error(
+  return runtime::Result<std::unique_ptr<Module>>::error(
       std::format("Could not detect module type for: {}", mod_dir.native()));
 }
 
-[[nodiscard]] runtime::Result<std::unique_ptr<Module>, std::string>
+[[nodiscard]] runtime::Result<std::unique_ptr<Module>>
 open_or_fetch_module(const std::filesystem::path &mod_dir,
                      std::string_view mod_url, std::string_view mod_type,
                      std::string_view mod_hash) {
@@ -38,7 +38,7 @@ open_or_fetch_module(const std::filesystem::path &mod_dir,
                                            mod_hash);
   }
 
-  return runtime::Result<std::unique_ptr<Module>, std::string>::error(
+  return runtime::Result<std::unique_ptr<Module>>::error(
       std::format("Could not detect module type for: {}", mod_url));
 }
 

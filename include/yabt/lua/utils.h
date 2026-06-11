@@ -102,57 +102,56 @@ template <typename T> struct LuaParseSpec<std::optional<T>> {
 };
 
 template <typename T>
-[[nodiscard]] runtime::Result<std::vector<T>, std::string>
+[[nodiscard]] runtime::Result<std::vector<T>>
 parse_with_spec(lua_State *const L, LuaArray<T>);
 
 template <typename T, typename... Args>
-[[nodiscard]] runtime::Result<T, std::string>
-parse_with_spec(lua_State *const L, LuaStruct<T, Args...>);
+[[nodiscard]] runtime::Result<T> parse_with_spec(lua_State *const L,
+                                                 LuaStruct<T, Args...>);
 
 template <typename T, typename U>
-[[nodiscard]] runtime::Result<std::map<T, U>, std::string>
+[[nodiscard]] runtime::Result<std::map<T, U>>
 parse_with_spec(lua_State *const L, LuaKvPairs<T, U>);
 
-[[nodiscard]] runtime::Result<std::string, std::string>
-parse_with_spec(lua_State *const L, LuaString);
+[[nodiscard]] runtime::Result<std::string> parse_with_spec(lua_State *const L,
+                                                           LuaString);
 
-[[nodiscard]] runtime::Result<int, std::string>
-parse_with_spec(lua_State *const L, LuaInteger);
+[[nodiscard]] runtime::Result<int> parse_with_spec(lua_State *const L,
+                                                   LuaInteger);
 
-[[nodiscard]] runtime::Result<bool, std::string>
-parse_with_spec(lua_State *const L, LuaBoolean);
+[[nodiscard]] runtime::Result<bool> parse_with_spec(lua_State *const L,
+                                                    LuaBoolean);
 
-[[nodiscard]] runtime::Result<void *, std::string>
-parse_with_spec(lua_State *const L, LuaPtr);
+[[nodiscard]] runtime::Result<void *> parse_with_spec(lua_State *const L,
+                                                      LuaPtr);
 
 template <typename T>
-[[nodiscard]] runtime::Result<std::optional<T>, std::string>
+[[nodiscard]] runtime::Result<std::optional<T>>
 parse_with_spec(lua_State *const L, LuaNullable<T>);
 
-[[nodiscard]] runtime::Result<Path, std::string>
-parse_with_spec(lua_State *const L, LuaUserData<Path>);
+[[nodiscard]] runtime::Result<Path> parse_with_spec(lua_State *const L,
+                                                    LuaUserData<Path>);
 
-[[nodiscard]] runtime::Result<OutPath, std::string>
-parse_with_spec(lua_State *const L, LuaUserData<OutPath>);
+[[nodiscard]] runtime::Result<OutPath> parse_with_spec(lua_State *const L,
+                                                       LuaUserData<OutPath>);
 
 template <typename T>
-[[nodiscard]] runtime::Result<T, std::string>
-parse_lua_object(lua_State *const L) {
+[[nodiscard]] runtime::Result<T> parse_lua_object(lua_State *const L) {
   StackGuard g{L};
   return parse_with_spec(L, typename LuaParseSpec<T>::spec{});
 }
 
 template <typename T>
-[[nodiscard]] runtime::Result<std::vector<T>, std::string>
+[[nodiscard]] runtime::Result<std::vector<T>>
 parse_with_spec(lua_State *const L, LuaArray<T>) {
   StackGuard g{L};
   if (lua_isnil(L, -1)) {
     // Treat a missing array as an empty array
-    return runtime::Result<std::vector<T>, std::string>::ok(std::vector<T>{});
+    return runtime::Result<std::vector<T>>::ok(std::vector<T>{});
   }
 
   if (!lua_istable(L, -1)) {
-    return runtime::Result<std::vector<T>, std::string>::error(
+    return runtime::Result<std::vector<T>>::error(
         std::format("Deserializing std::vector<T>, but found type: {}",
                     lua_typename(L, lua_type(L, -1))));
   }
@@ -168,20 +167,20 @@ parse_with_spec(lua_State *const L, LuaArray<T>) {
     lua_pop(L, 1);
   }
 
-  return runtime::Result<std::vector<T>, std::string>::ok(result);
+  return runtime::Result<std::vector<T>>::ok(result);
 }
 
 template <typename T, typename U>
-[[nodiscard]] runtime::Result<std::map<T, U>, std::string>
+[[nodiscard]] runtime::Result<std::map<T, U>>
 parse_with_spec(lua_State *const L, LuaKvPairs<T, U>) {
   StackGuard g{L};
   if (lua_isnil(L, -1)) {
     // Treat a missing table as an empty table
-    return runtime::Result<std::map<T, U>, std::string>::ok(std::map<T, U>{});
+    return runtime::Result<std::map<T, U>>::ok(std::map<T, U>{});
   }
 
   if (!lua_istable(L, -1)) {
-    return runtime::Result<std::map<T, U>, std::string>::error(
+    return runtime::Result<std::map<T, U>>::error(
         std::format("Deserializing std::map<T, U>, but found type: {}",
                     lua_typename(L, lua_type(L, -1))));
   }
@@ -199,33 +198,32 @@ parse_with_spec(lua_State *const L, LuaKvPairs<T, U>) {
     const T key = RESULT_PROPAGATE(parse_lua_object<T>(L));
     result.insert(std::make_pair(key, value));
   }
-  return runtime::Result<std::map<T, U>, std::string>::ok(result);
+  return runtime::Result<std::map<T, U>>::ok(result);
 }
 
 template <typename T, typename... Args>
-[[nodiscard]] runtime::Result<T, std::string>
-parse_with_spec(lua_State *const L, LuaStruct<T, Args...>) {
+[[nodiscard]] runtime::Result<T> parse_with_spec(lua_State *const L,
+                                                 LuaStruct<T, Args...>) {
   StackGuard g{L};
   if (!lua_istable(L, -1)) {
-    return runtime::Result<T, std::string>::error(
+    return runtime::Result<T>::error(
         std::format("Deserializing struct, but found type: {}",
                     lua_typename(L, lua_type(L, -1))));
   }
 
   T result{};
 
-  std::string error_string;
+  std::optional<runtime::Error> error;
   const auto handle_arg =
       [L, &result,
-       &error_string]<typename U, utils::ConstexprString Name, U T::*Field>(
+       &error]<typename U, utils::ConstexprString Name, U T::*Field>(
           LuaStructField<T, U, Name, Field>) {
         lua_pushstring(L, Name.data);
         lua_gettable(L, -2);
 
-        const runtime::Result<U, std::string> inner_res =
-            parse_lua_object<U>(L);
+        const runtime::Result<U> inner_res = parse_lua_object<U>(L);
         if (!inner_res.is_ok()) {
-          error_string = inner_res.error_value();
+          error = inner_res.error_value();
           lua_pop(L, 1);
           return false;
         }
@@ -237,82 +235,80 @@ parse_with_spec(lua_State *const L, LuaStruct<T, Args...>) {
 
   const bool ok = (handle_arg(Args{}) && ...);
   if (!ok) {
-    return runtime::Result<T, std::string>::error(error_string);
+    runtime::check(error.has_value(), "BUG: Expected error to have a value");
+    return runtime::Result<T>::error(std::move(error.value()));
   }
 
-  return runtime::Result<T, std::string>::ok(result);
+  return runtime::Result<T>::ok(result);
 }
 
-[[nodiscard]] inline runtime::Result<std::string, std::string>
+[[nodiscard]] inline runtime::Result<std::string>
 parse_with_spec(lua_State *const L, LuaString) {
   StackGuard g{L};
   if (lua_isnil(L, -1)) {
     // Empty string
-    return runtime::Result<std::string, std::string>::ok("");
+    return runtime::Result<std::string>::ok("");
   }
 
   if (!lua_isstring(L, -1)) {
-    return runtime::Result<std::string, std::string>::error(
+    return runtime::Result<std::string>::error(
         std::format("Deserializing std::string, but found type {}",
                     lua_typename(L, lua_type(L, -1))));
   }
 
-  return runtime::Result<std::string, std::string>::ok(lua_tostring(L, -1));
+  return runtime::Result<std::string>::ok(lua_tostring(L, -1));
 }
 
-[[nodiscard]] inline runtime::Result<int, std::string>
-parse_with_spec(lua_State *const L, LuaInteger) {
+[[nodiscard]] inline runtime::Result<int> parse_with_spec(lua_State *const L,
+                                                          LuaInteger) {
   StackGuard g{L};
   if (!lua_isnumber(L, -1)) {
-    return runtime::Result<int, std::string>::error(
+    return runtime::Result<int>::error(
         std::format("Deserializing int, but found type {}",
                     lua_typename(L, lua_type(L, -1))));
   }
 
-  return runtime::Result<int, std::string>::ok(
-      static_cast<int>(lua_tointeger(L, -1)));
+  return runtime::Result<int>::ok(static_cast<int>(lua_tointeger(L, -1)));
 }
 
-[[nodiscard]] inline runtime::Result<bool, std::string>
-parse_with_spec(lua_State *const L, LuaBoolean) {
+[[nodiscard]] inline runtime::Result<bool> parse_with_spec(lua_State *const L,
+                                                           LuaBoolean) {
   StackGuard g{L};
   if (lua_isnil(L, -1)) {
-    return runtime::Result<bool, std::string>::ok(false);
+    return runtime::Result<bool>::ok(false);
   }
 
   if (!lua_isboolean(L, -1)) {
-    return runtime::Result<bool, std::string>::error(
+    return runtime::Result<bool>::error(
         std::format("Deserializing bool, but found type {}",
                     lua_typename(L, lua_type(L, -1))));
   }
 
-  return runtime::Result<bool, std::string>::ok(
-      static_cast<bool>(lua_toboolean(L, -1)));
+  return runtime::Result<bool>::ok(static_cast<bool>(lua_toboolean(L, -1)));
 }
 
-[[nodiscard]] inline runtime::Result<void *, std::string>
-parse_with_spec(lua_State *const L, LuaPtr) {
+[[nodiscard]] inline runtime::Result<void *> parse_with_spec(lua_State *const L,
+                                                             LuaPtr) {
   StackGuard g{L};
   if (!lua_islightuserdata(L, -1)) {
-    return runtime::Result<void *, std::string>::error(
+    return runtime::Result<void *>::error(
         std::format("Deserializing void*, but found type {}",
                     lua_typename(L, lua_type(L, -1))));
   }
 
-  return runtime::Result<void *, std::string>::ok(lua_touserdata(L, -1));
+  return runtime::Result<void *>::ok(lua_touserdata(L, -1));
 }
 
 template <typename T>
-[[nodiscard]] runtime::Result<std::optional<T>, std::string>
+[[nodiscard]] runtime::Result<std::optional<T>>
 parse_with_spec(lua_State *const L, LuaNullable<T>) {
   StackGuard g{L};
   if (lua_isnil(L, -1)) {
-    return runtime::Result<std::optional<T>, std::string>::ok(std::nullopt);
+    return runtime::Result<std::optional<T>>::ok(std::nullopt);
   }
 
   const T inner = RESULT_PROPAGATE(parse_lua_object<T>(L));
-  return runtime::Result<std::optional<T>, std::string>::ok(
-      std::optional{inner});
+  return runtime::Result<std::optional<T>>::ok(std::optional{inner});
 }
 
 #define _REMOVE_PARENS_IMPL(...) __VA_ARGS__

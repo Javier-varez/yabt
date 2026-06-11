@@ -16,10 +16,10 @@ class BuildCommand final : public cli::SubcommandHandler {
 public:
   BuildCommand() noexcept = default;
 
-  [[nodiscard]] runtime::Result<void, std::string>
+  [[nodiscard]] runtime::Result<void>
   register_command(cli::CliParser &parser) noexcept;
 
-  [[nodiscard]] runtime::Result<void, std::string> handle_subcommand(
+  [[nodiscard]] runtime::Result<void> handle_subcommand(
       std::span<const std::string_view> unparsed_args) noexcept final;
 
 private:

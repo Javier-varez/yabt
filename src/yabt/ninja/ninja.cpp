@@ -5,7 +5,7 @@
 
 namespace yabt::ninja {
 
-runtime::Result<void, std::string> save_ninja_file(
+runtime::Result<void> save_ninja_file(
     const std::filesystem::path ninja_filepath,
     const std::map<std::string, BuildRule> &build_rules,
     const std::span<const BuildStep> build_steps,
@@ -15,7 +15,7 @@ runtime::Result<void, std::string> save_ninja_file(
   std::error_code error_code;
   std::filesystem::create_directories(ninja_filepath.parent_path(), error_code);
   if (error_code) {
-    return runtime::Result<void, std::string>::error(std::format(
+    return runtime::Result<void>::error(std::format(
         "Failed to create build directory {}: {}",
         ninja_filepath.parent_path().native(), error_code.message()));
   }
@@ -74,6 +74,6 @@ runtime::Result<void, std::string> save_ninja_file(
   fflush(file);
   fclose(file);
 
-  return runtime::Result<void, std::string>::ok();
+  return runtime::Result<void>::ok();
 }
 } // namespace yabt::ninja

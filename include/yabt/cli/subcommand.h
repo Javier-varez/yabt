@@ -12,7 +12,7 @@ namespace yabt::cli {
 
 class SubcommandHandler {
 public:
-  [[nodiscard]] virtual runtime::Result<void, std::string> handle_subcommand(
+  [[nodiscard]] virtual runtime::Result<void> handle_subcommand(
       std::span<const std::string_view> unparsed_args) noexcept = 0;
 
   virtual ~SubcommandHandler() noexcept = default;
@@ -26,8 +26,7 @@ public:
       : m_name{name}, m_short_descr{short_descr}, m_long_descr{long_descr},
         m_handler{&handler} {}
 
-  [[nodiscard]] inline runtime::Result<void, std::string>
-  register_flag(Flag flag) noexcept {
+  [[nodiscard]] inline runtime::Result<void> register_flag(Flag flag) noexcept {
     RESULT_PROPAGATE_DISCARD(flag.validate());
     const auto iter = std::find_if(m_flags.begin(), m_flags.end(),
                                    [&flag](const Flag &other) noexcept -> bool {
@@ -35,10 +34,10 @@ public:
                                    });
     if (iter != m_flags.end()) {
       *iter = std::move(flag);
-      return runtime::Result<void, std::string>::ok();
+      return runtime::Result<void>::ok();
     }
     m_flags.push_back(std::move(flag));
-    return runtime::Result<void, std::string>::ok();
+    return runtime::Result<void>::ok();
   }
 
   inline void set_handler(SubcommandHandler &handler) noexcept {
@@ -53,7 +52,7 @@ public:
     return m_flags;
   }
 
-  [[nodiscard]] inline runtime::Result<void, std::string>
+  [[nodiscard]] inline runtime::Result<void>
   invoke(std::span<const std::string_view> unparsed_args) const noexcept {
     return m_handler->handle_subcommand(unparsed_args);
   }

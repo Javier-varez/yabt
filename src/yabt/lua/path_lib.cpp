@@ -282,31 +282,30 @@ constexpr static struct luaL_Reg free_functions_table[] = {
 
 } // namespace
 
-runtime::Result<OutPath, std::string> parse_with_spec(lua_State *const L,
-                                                      LuaUserData<OutPath>) {
+runtime::Result<OutPath> parse_with_spec(lua_State *const L,
+                                         LuaUserData<OutPath>) {
   StackGuard g{L};
   std::filesystem::path *ud = static_cast<std::filesystem::path *>(
       luaL_checkudata(L, -1, OutPathParams::METATABLE));
   luaL_argcheck(L, ud != nullptr, 1, "path expected");
-  return runtime::Result<OutPath, std::string>::ok(OutPath{ud->string()});
+  return runtime::Result<OutPath>::ok(OutPath{ud->string()});
 }
 
-runtime::Result<Path, std::string> parse_with_spec(lua_State *const L,
-                                                   LuaUserData<Path>) {
+runtime::Result<Path> parse_with_spec(lua_State *const L, LuaUserData<Path>) {
   StackGuard g{L};
   const auto *const in =
       static_cast<std::filesystem::path *>(luaL_testudata(L, -1, IN_PATH_META));
   if (in != nullptr) {
-    return runtime::Result<Path, std::string>::ok(Path{in->string()});
+    return runtime::Result<Path>::ok(Path{in->string()});
   }
 
   const auto *const out = static_cast<std::filesystem::path *>(
       luaL_testudata(L, -1, OUT_PATH_META));
   if (out != nullptr) {
-    return runtime::Result<Path, std::string>::ok(Path{out->string()});
+    return runtime::Result<Path>::ok(Path{out->string()});
   }
 
-  return runtime::Result<Path, std::string>::error(std::format(
+  return runtime::Result<Path>::error(std::format(
       "Expected path but got: {}", lua_typename(L, lua_type(L, -1))));
 }
 

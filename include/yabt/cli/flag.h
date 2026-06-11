@@ -21,9 +21,9 @@ struct Flag final {
   bool optional;
   FlagType type;
   std::string description;
-  std::function<runtime::Result<void, std::string>(Arg)> handler;
+  std::function<runtime::Result<void>(Arg)> handler;
 
-  [[nodiscard]] runtime::Result<void, std::string> validate() const noexcept;
+  [[nodiscard]] runtime::Result<void> validate() const noexcept;
 };
 
 } // namespace yabt::cli

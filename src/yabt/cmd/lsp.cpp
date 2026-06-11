@@ -93,7 +93,7 @@ json_escape(const std::string_view unscaped) noexcept {
 
 } // namespace
 
-[[nodiscard]] runtime::Result<void, std::string>
+[[nodiscard]] runtime::Result<void>
 LspCommand::register_command(cli::CliParser &cli_parser) noexcept {
   yabt::cli::Subcommand &subcommand = cli_parser.register_subcommand(
       "lsp", *this, SHORT_DESCRIPTION, LONG_DESCRIPTION);
@@ -108,17 +108,17 @@ LspCommand::register_command(cli::CliParser &cli_parser) noexcept {
       .handler{[this](const cli::Arg &a) {
         const cli::StringArg arg = std::get<cli::StringArg>(a);
         this->m_lsp_binary = arg.value;
-        return runtime::Result<void, std::string>::ok();
+        return runtime::Result<void>::ok();
       }},
   });
 }
 
-[[nodiscard]] runtime::Result<void, std::string> LspCommand::handle_subcommand(
+[[nodiscard]] runtime::Result<void> LspCommand::handle_subcommand(
     const std::span<const std::string_view> unparsed_args) noexcept {
   const std::optional<std::filesystem::path> ws_root =
       workspace::get_workspace_root();
   if (!ws_root.has_value()) {
-    return runtime::Result<void, std::string>::error(
+    return runtime::Result<void>::error(
         std::format("Could not find workspace root. Are you sure your "
                     "directory tree contains a {} file?",
                     module::MODULE_FILE_NAME));
@@ -145,7 +145,7 @@ LspCommand::register_command(cli::CliParser &cli_parser) noexcept {
   std::error_code error_code;
   std::filesystem::create_directories(lua_config_dir_string, error_code);
   if (error_code) {
-    return runtime::Result<void, std::string>::error(
+    return runtime::Result<void>::error(
         std::format("Failed to create build directory {}: {}",
                     lua_config_dir.native(), error_code.message()));
   }
@@ -157,14 +157,14 @@ LspCommand::register_command(cli::CliParser &cli_parser) noexcept {
     std::error_code error_code;
     std::filesystem::create_directories(filepath.parent_path(), error_code);
     if (error_code) {
-      return runtime::Result<void, std::string>::error(
+      return runtime::Result<void>::error(
           std::format("Failed to create parent directory for {}: {}",
                       filepath.native(), error_code.message()));
     }
 
     std::ofstream file{filepath};
     if (!file) {
-      return runtime::Result<void, std::string>::error(
+      return runtime::Result<void>::error(
           std::format("Failed to write file {}", filepath.native()));
     }
     file << content;
@@ -179,7 +179,7 @@ LspCommand::register_command(cli::CliParser &cli_parser) noexcept {
   {
     std::ofstream config_file{config_path};
     if (!config_file) {
-      return runtime::Result<void, std::string>::error(
+      return runtime::Result<void>::error(
           std::format("Failed to write config to {}", config_path.native()));
     }
     config_file << json;

@@ -18,13 +18,12 @@ public:
       std::string_view short_description,
       std::string_view long_description = std::string_view{}) noexcept;
 
-  [[nodiscard]] runtime::Result<void, std::string>
-  register_flag(Flag config) noexcept;
+  [[nodiscard]] runtime::Result<void> register_flag(Flag config) noexcept;
 
   void set_description(std::string_view description) noexcept;
 
-  [[nodiscard]] runtime::Result<void, std::string>
-  parse(const size_t argc, const char *argv[]) const noexcept;
+  [[nodiscard]] runtime::Result<void> parse(const size_t argc,
+                                            const char *argv[]) const noexcept;
 
   void print_help() const noexcept;
 

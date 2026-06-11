@@ -30,7 +30,7 @@ struct ModuleFile {
   DependencyMap deps;
   FlagMap flags;
 
-  [[nodiscard]] static runtime::Result<ModuleFile, std::string>
+  [[nodiscard]] static runtime::Result<ModuleFile>
   load_module_file(std::filesystem::path path) noexcept;
 };
 

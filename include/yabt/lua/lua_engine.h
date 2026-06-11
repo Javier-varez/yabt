@@ -21,7 +21,7 @@ namespace yabt::lua {
 
 class LuaEngine {
 public:
-  [[nodiscard]] static yabt::runtime::Result<LuaEngine, std::string>
+  [[nodiscard]] static yabt::runtime::Result<LuaEngine>
   construct(const std::filesystem::path &workspace_root);
 
   LuaEngine(const LuaEngine &) = delete;
@@ -40,20 +40,18 @@ public:
   set_preloaded_lua_packages(std::map<std::string, std::string_view> packages);
 
   // TODO: Move to runtime lua module
-  [[nodiscard]] runtime::Result<void, std::string>
+  [[nodiscard]] runtime::Result<void>
   register_yabt_module(const std::string &name,
                        const std::filesystem::path &path,
                        std::span<const std::string> target_specs);
 
   void register_lua_module(LuaModule &module);
 
-  [[nodiscard]] runtime::Result<void, std::string>
-  exec_file(std::string_view file_path);
+  [[nodiscard]] runtime::Result<void> exec_file(std::string_view file_path);
 
-  [[nodiscard]] runtime::Result<void, std::string>
-  exec_string(const char *string);
+  [[nodiscard]] runtime::Result<void> exec_string(const char *string);
 
-  [[nodiscard]] runtime::Result<void, std::string>
+  [[nodiscard]] runtime::Result<void>
   set_args(std::span<const std::string> args);
 
 private:

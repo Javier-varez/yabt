@@ -15,7 +15,7 @@ const std::string_view LONG_DESCRIPTION =
     "Builds the requested targets and tests them.";
 } // namespace
 
-[[nodiscard]] runtime::Result<void, std::string>
+[[nodiscard]] runtime::Result<void>
 TestCommand::register_command(cli::CliParser &cli_parser) noexcept {
   yabt::cli::Subcommand &subcommand = cli_parser.register_subcommand(
       "test", *this, SHORT_DESCRIPTION, LONG_DESCRIPTION);
@@ -29,7 +29,7 @@ TestCommand::register_command(cli::CliParser &cli_parser) noexcept {
       .handler{[this](const cli::Arg &a) {
         const cli::IntegerArg arg = std::get<cli::IntegerArg>(a);
         this->m_threads = arg.value;
-        return runtime::Result<void, std::string>::ok();
+        return runtime::Result<void>::ok();
       }},
   }));
 
@@ -42,12 +42,12 @@ TestCommand::register_command(cli::CliParser &cli_parser) noexcept {
       .handler{[this](const cli::Arg &a) {
         const cli::StringArg arg = std::get<cli::StringArg>(a);
         this->m_build_dir = arg.value;
-        return runtime::Result<void, std::string>::ok();
+        return runtime::Result<void>::ok();
       }},
   });
 }
 
-[[nodiscard]] runtime::Result<void, std::string> TestCommand::handle_subcommand(
+[[nodiscard]] runtime::Result<void> TestCommand::handle_subcommand(
     std::span<const std::string_view> unparsed_args) noexcept {
   const build::BuildArgs build_args = build::parse_args(unparsed_args);
   if (const runtime::Result result =
@@ -58,7 +58,7 @@ TestCommand::register_command(cli::CliParser &cli_parser) noexcept {
     exit(EXIT_FAILURE);
   }
 
-  return runtime::Result<void, std::string>::ok();
+  return runtime::Result<void>::ok();
 }
 
 } // namespace yabt::cmd

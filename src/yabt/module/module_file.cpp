@@ -27,29 +27,27 @@ namespace yabt::module {
 
 namespace {
 
-[[nodiscard]] runtime::Result<void, std::string>
+[[nodiscard]] runtime::Result<void>
 validate_module_file(const ModuleFile &modfile) noexcept {
   if (modfile.name == "") {
-    return runtime::Result<void, std::string>::error(
-        "Module file has no module name");
+    return runtime::Result<void>::error("Module file has no module name");
   }
 
   if (modfile.version != 1) {
-    return runtime::Result<void, std::string>::error(
+    return runtime::Result<void>::error(
         std::format("Unsupported module file version: {}", modfile.version));
   }
 
-  return runtime::Result<void, std::string>::ok();
+  return runtime::Result<void>::ok();
 }
 
 } // namespace
 
-[[nodiscard]] runtime::Result<ModuleFile, std::string>
+[[nodiscard]] runtime::Result<ModuleFile>
 ModuleFile::load_module_file(const std::filesystem::path path) noexcept {
   lua_State *const L = luaL_newstate();
   if (L == nullptr) {
-    return runtime::Result<ModuleFile, std::string>::error(
-        "Unable to create lua state");
+    return runtime::Result<ModuleFile>::error("Unable to create lua state");
   }
   utils::Defer _deleteL{[L]() { lua_close(L); }};
 
@@ -62,13 +60,13 @@ ModuleFile::load_module_file(const std::filesystem::path path) noexcept {
   if (err != 0 /* LUA_OK */) {
     const std::string error_msg =
         RESULT_PROPAGATE(lua::parse_lua_object<std::string>(L));
-    return runtime::Result<ModuleFile, std::string>::error(
+    return runtime::Result<ModuleFile>::error(
         std::format("Error loading module file: {}", error_msg));
   }
 
   const ModuleFile mod = RESULT_PROPAGATE(lua::parse_lua_object<ModuleFile>(L));
   RESULT_PROPAGATE_DISCARD(validate_module_file(mod));
-  return runtime::Result<ModuleFile, std::string>::ok(mod);
+  return runtime::Result<ModuleFile>::ok(mod);
 }
 
 } // namespace yabt::module

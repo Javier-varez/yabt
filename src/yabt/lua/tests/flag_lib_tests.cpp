@@ -12,7 +12,7 @@ protected:
   FlagLibTests()
       : m_engine{[]() {
           std::filesystem::path ws_root{"root"};
-          runtime::Result<LuaEngine, std::string> engine_result =
+          runtime::Result<LuaEngine> engine_result =
               LuaEngine::construct(ws_root);
 
           runtime::check(engine_result.is_ok(), "Engine construction failed");
@@ -43,7 +43,7 @@ TEST_F(FlagLibTests, RegisterFlagNameMissing) {
   )");
 
   ASSERT_TRUE(result.is_error());
-  ASSERT_EQ(result.error_value(),
+  ASSERT_EQ(result.error_value().message(),
             "failed to run file: Flag does not have a name");
 }
 
@@ -88,7 +88,7 @@ TEST_F(FlagLibTests, RegisterDuplicateFlag) {
   )");
 
   ASSERT_TRUE(result.is_error());
-  EXPECT_EQ(result.error_value(),
+  EXPECT_EQ(result.error_value().message(),
             "failed to run file: Duplicated flag spec for name: cc_toolchain");
 }
 
@@ -166,8 +166,9 @@ TEST_F(FlagLibTests, RegisterIntFlagInvalidRange) {
   )");
 
   ASSERT_TRUE(result.is_error());
-  EXPECT_EQ(result.error_value(), "failed to run file: Invalid range for yabt "
-                                  "flag \"timeout_ms\": [11, 10]");
+  EXPECT_EQ(result.error_value().message(),
+            "failed to run file: Invalid range for yabt "
+            "flag \"timeout_ms\": [11, 10]");
 }
 
 TEST_F(FlagLibTests, RegisterEnumFlag) {
@@ -213,7 +214,7 @@ TEST_F(FlagLibTests, RegisterEnumFlagWithoutValues) {
 
   ASSERT_TRUE(result.is_error());
   EXPECT_EQ(
-      result.error_value(),
+      result.error_value().message(),
       "failed to run file: Enum flag spec \"build_type\" has no valid values");
 }
 
@@ -276,7 +277,8 @@ TEST_F(FlagLibTests, RequiredFlagNotGiven) {
   const auto result = m_flag_lib.resolve_flag_values(
       std::array{RawFlag{.key{"build_type"}, .value{"release"}}});
   ASSERT_TRUE(result.is_error());
-  EXPECT_EQ(result.error_value(), "No value given for flag \"cc_toolchain\"");
+  EXPECT_EQ(result.error_value().message(),
+            "No value given for flag \"cc_toolchain\"");
 }
 
 TEST_F(FlagLibTests, AllFlagDefaults) {

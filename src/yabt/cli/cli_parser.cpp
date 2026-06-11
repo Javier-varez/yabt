@@ -11,9 +11,9 @@ using std::string_view_literals::operator""sv;
 
 namespace {
 
-[[nodiscard]] runtime::Result<std::pair<Flag, Arg>, std::string>
+[[nodiscard]] runtime::Result<std::pair<Flag, Arg>>
 validate_flag(const Flag &flag, std::string_view name, std::string_view value) {
-  using Result = runtime::Result<std::pair<Flag, Arg>, std::string>;
+  using Result = runtime::Result<std::pair<Flag, Arg>>;
   switch (flag.type) {
   case FlagType::STRING: {
     if (value.length() == 0) {
@@ -52,7 +52,7 @@ validate_flag(const Flag &flag, std::string_view name, std::string_view value) {
                  static_cast<std::underlying_type_t<FlagType>>(flag.type));
 }
 
-[[nodiscard]] runtime::Result<std::pair<Flag, Arg>, std::string>
+[[nodiscard]] runtime::Result<std::pair<Flag, Arg>>
 parse_long_flag(const std::span<const Flag> &flags, std::string_view sv) {
   constexpr static std::string_view DELIMITERS = " \t\r\n="sv;
   // Find delimiter (whitespace or equals)
@@ -64,7 +64,7 @@ parse_long_flag(const std::span<const Flag> &flags, std::string_view sv) {
                      return flag.name == flag_name;
                    });
   if (iter == flags.end()) {
-    return runtime::Result<std::pair<Flag, Arg>, std::string>::error(
+    return runtime::Result<std::pair<Flag, Arg>>::error(
         std::format("Unknown long flag: {}", flag_name));
   }
 
@@ -76,10 +76,9 @@ parse_long_flag(const std::span<const Flag> &flags, std::string_view sv) {
   return validate_flag(*iter, flag_name, flag_value);
 }
 
-[[nodiscard]] runtime::Result<std::vector<std::pair<Flag, Arg>>, std::string>
+[[nodiscard]] runtime::Result<std::vector<std::pair<Flag, Arg>>>
 parse_short_flags(const std::span<const Flag> &flags, std::string_view sv) {
-  using Result =
-      runtime::Result<std::vector<std::pair<Flag, Arg>>, std::string>;
+  using Result = runtime::Result<std::vector<std::pair<Flag, Arg>>>;
 
   std::vector<std::pair<Flag, Arg>> args;
   for (const char flag_char : sv) {
@@ -166,8 +165,7 @@ CliParser::register_subcommand(std::string_view name,
   return m_subcommands.back();
 }
 
-runtime::Result<void, std::string>
-CliParser::register_flag(Flag config) noexcept {
+runtime::Result<void> CliParser::register_flag(Flag config) noexcept {
   RESULT_PROPAGATE_DISCARD(config.validate());
 
   const auto iter = std::find_if(m_global_flags.begin(), m_global_flags.end(),
@@ -176,14 +174,14 @@ CliParser::register_flag(Flag config) noexcept {
                                  });
   if (iter != m_global_flags.end()) {
     *iter = std::move(config);
-    return runtime::Result<void, std::string>::ok();
+    return runtime::Result<void>::ok();
   }
   m_global_flags.push_back(std::move(config));
 
-  return runtime::Result<void, std::string>::ok();
+  return runtime::Result<void>::ok();
 }
 
-[[nodiscard]] runtime::Result<void, std::string>
+[[nodiscard]] runtime::Result<void>
 CliParser::parse(const size_t argc, const char *argv[]) const noexcept {
   // Parse global flags
   size_t arg_idx = 1;
@@ -225,15 +223,14 @@ CliParser::parse(const size_t argc, const char *argv[]) const noexcept {
     if (!flag.optional && flag.type != FlagType::BOOL) {
       if (std::find(seen_global_flags.begin(), seen_global_flags.end(),
                     flag.name) == seen_global_flags.end()) {
-        return runtime::Result<void, std::string>::error(
+        return runtime::Result<void>::error(
             std::format("Missing required global flag: --{}", flag.name));
       }
     }
   }
 
   if (arg_idx >= argc) {
-    return runtime::Result<void, std::string>::error(
-        "Did not get a valid subcommand");
+    return runtime::Result<void>::error("Did not get a valid subcommand");
   }
 
   std::string_view given_subcommand{argv[arg_idx++]};
@@ -243,7 +240,7 @@ CliParser::parse(const size_t argc, const char *argv[]) const noexcept {
                      return subcommand.name() == given_subcommand;
                    });
   if (subcommand_iter == m_subcommands.cend()) {
-    return runtime::Result<void, std::string>::error(
+    return runtime::Result<void>::error(
         std::format("Unknown subcommand \"{}\"", given_subcommand));
   }
 
@@ -293,7 +290,7 @@ CliParser::parse(const size_t argc, const char *argv[]) const noexcept {
     if (!flag.optional && flag.type != FlagType::BOOL) {
       if (std::find(seen_subcommand_flags.begin(), seen_subcommand_flags.end(),
                     flag.name) == seen_subcommand_flags.end()) {
-        return runtime::Result<void, std::string>::error(
+        return runtime::Result<void>::error(
             std::format("Missing required flag for subcommand \"{}\": --{}",
                         given_subcommand, flag.name));
       }
@@ -306,7 +303,7 @@ CliParser::parse(const size_t argc, const char *argv[]) const noexcept {
   }
 
   return subcommand.invoke(unparsed_args);
-  return runtime::Result<void, std::string>::ok();
+  return runtime::Result<void>::ok();
 }
 
 void CliParser::set_description(std::string_view descr) noexcept {

@@ -16,7 +16,7 @@ const std::string_view LONG_DESCRIPTION =
     "Sets up the repository by syncing its dependencies";
 } // namespace
 
-[[nodiscard]] runtime::Result<void, std::string>
+[[nodiscard]] runtime::Result<void>
 SyncCommand::register_command(cli::CliParser &cli_parser) noexcept {
   yabt::cli::Subcommand &subcommand = cli_parser.register_subcommand(
       "sync", *this, SHORT_DESCRIPTION, LONG_DESCRIPTION);
@@ -30,22 +30,22 @@ SyncCommand::register_command(cli::CliParser &cli_parser) noexcept {
                    "with a hash"},
       .handler{[this](const cli::Arg &) {
         this->m_sync_mode = workspace::SyncMode::STRICT;
-        return runtime::Result<void, std::string>::ok();
+        return runtime::Result<void>::ok();
       }},
   });
 }
 
-[[nodiscard]] runtime::Result<void, std::string> SyncCommand::handle_subcommand(
+[[nodiscard]] runtime::Result<void> SyncCommand::handle_subcommand(
     std::span<const std::string_view> unparsed_args) noexcept {
   if (unparsed_args.size() != 0) {
-    return runtime::Result<void, std::string>::error(
+    return runtime::Result<void>::error(
         "Unexpected arguments passed to \"sync\" subcommand");
   }
 
   const std::optional<std::filesystem::path> ws_root =
       workspace::get_workspace_root();
   if (!ws_root.has_value()) {
-    return runtime::Result<void, std::string>::error(
+    return runtime::Result<void>::error(
         std::format("Could not find workspace root. Are you sure your "
                     "directory tree contains a {} file?",
                     module::MODULE_FILE_NAME));
@@ -58,7 +58,7 @@ SyncCommand::register_command(cli::CliParser &cli_parser) noexcept {
   } else {
     yabt_info("Dependencies have been synced successfully");
   }
-  return runtime::Result<void, std::string>::ok();
+  return runtime::Result<void>::ok();
 }
 
 } // namespace yabt::cmd

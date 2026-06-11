@@ -11,28 +11,27 @@ namespace yabt::module {
 
 class GitModule final : public Module {
 public:
-  [[nodiscard]] static runtime::Result<std::unique_ptr<Module>, std::string>
+  [[nodiscard]] static runtime::Result<std::unique_ptr<Module>>
   open_or_fetch_module(const std::filesystem::path &mod_dir,
                        std::string_view mod_url, std::string_view mod_type,
                        std::string_view mod_hash) noexcept;
 
-  [[nodiscard]] static runtime::Result<std::unique_ptr<Module>, std::string>
+  [[nodiscard]] static runtime::Result<std::unique_ptr<Module>>
   open(std::filesystem::path mod_dir) noexcept;
 
   [[nodiscard]] std::string name() const noexcept final;
 
   [[nodiscard]] std::filesystem::path disk_path() const noexcept final;
 
-  [[nodiscard]] runtime::Result<std::string, std::string>
-  head() const noexcept final;
+  [[nodiscard]] runtime::Result<std::string> head() const noexcept final;
 
-  [[nodiscard]] runtime::Result<void, std::string> fetch() const noexcept final;
+  [[nodiscard]] runtime::Result<void> fetch() const noexcept final;
 
-  [[nodiscard]] runtime::Result<bool, std::string>
+  [[nodiscard]] runtime::Result<bool>
   is_ancestor(std::string_view ancestor,
               std::string_view revision) const noexcept final;
 
-  [[nodiscard]] runtime::Result<void, std::string>
+  [[nodiscard]] runtime::Result<void>
   checkout(std::string_view revision) const noexcept final;
 
   GitModule(const GitModule &) noexcept = default;

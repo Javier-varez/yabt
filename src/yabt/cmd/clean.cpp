@@ -14,7 +14,7 @@ const std::string_view SHORT_DESCRIPTION =
 const std::string_view LONG_DESCRIPTION = "Cleans all the yabt build artifacts";
 } // namespace
 
-[[nodiscard]] runtime::Result<void, std::string>
+[[nodiscard]] runtime::Result<void>
 CleanCommand::register_command(cli::CliParser &cli_parser) noexcept {
   yabt::cli::Subcommand &subcommand = cli_parser.register_subcommand(
       "clean", *this, SHORT_DESCRIPTION, LONG_DESCRIPTION);
@@ -26,7 +26,7 @@ CleanCommand::register_command(cli::CliParser &cli_parser) noexcept {
       .description{"Cleans the DEPS directory as well."},
       .handler{[this](const cli::Arg &) {
         this->m_deps = true;
-        return runtime::Result<void, std::string>::ok();
+        return runtime::Result<void>::ok();
       }},
   }));
 
@@ -39,16 +39,15 @@ CleanCommand::register_command(cli::CliParser &cli_parser) noexcept {
       .handler{[this](const cli::Arg &a) {
         const cli::StringArg arg = std::get<cli::StringArg>(a);
         this->m_build_dir = arg.value;
-        return runtime::Result<void, std::string>::ok();
+        return runtime::Result<void>::ok();
       }},
   });
 }
 
-[[nodiscard]] runtime::Result<void, std::string>
-CleanCommand::handle_subcommand(
+[[nodiscard]] runtime::Result<void> CleanCommand::handle_subcommand(
     std::span<const std::string_view> unparsed_args) noexcept {
   if (unparsed_args.size() != 0) {
-    return runtime::Result<void, std::string>::error(
+    return runtime::Result<void>::error(
         "Additional unparsed arguments were given to the yabt clean command.\n"
         "This command does not take any more arguments.");
   }
@@ -56,7 +55,7 @@ CleanCommand::handle_subcommand(
   const std::optional<std::filesystem::path> ws_root =
       workspace::get_workspace_root();
   if (!ws_root.has_value()) {
-    return runtime::Result<void, std::string>::error(
+    return runtime::Result<void>::error(
         std::format("Could not find workspace root. Are you sure your "
                     "directory tree contains a {} file?",
                     module::MODULE_FILE_NAME));
@@ -72,7 +71,7 @@ CleanCommand::handle_subcommand(
     std::filesystem::remove_all(deps_dir);
   }
 
-  return runtime::Result<void, std::string>::ok();
+  return runtime::Result<void>::ok();
 }
 
 } // namespace yabt::cmd

@@ -55,7 +55,7 @@ public:
     std::optional<std::string> stderr;
     ExitReason exit_reason;
 
-    [[nodiscard]] runtime::Result<void, std::string> to_result() const noexcept;
+    [[nodiscard]] runtime::Result<void> to_result() const noexcept;
   };
 
   template <typename... Args>
@@ -76,7 +76,7 @@ public:
 
   void set_cwd(const std::string_view path);
 
-  [[nodiscard]] runtime::Result<void, std::string>
+  [[nodiscard]] runtime::Result<void>
   start(bool capture_stdout = false) noexcept;
 
   [[nodiscard]] ProcessOutput process_output() noexcept;

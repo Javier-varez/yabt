@@ -30,11 +30,11 @@ struct ContextLib : public LuaModule {
 
   // Call the stored run/test function for a target with the given args.
   // Returns the argv list (executable + arguments) to execute.
-  [[nodiscard]] runtime::Result<std::vector<std::string>, std::string>
+  [[nodiscard]] runtime::Result<std::vector<std::string>>
   call_run_fn(const std::string &target,
               std::span<const std::string_view> args);
 
-  [[nodiscard]] runtime::Result<std::vector<std::string>, std::string>
+  [[nodiscard]] runtime::Result<std::vector<std::string>>
   call_test_fn(const std::string &target,
                std::span<const std::string_view> args);
 

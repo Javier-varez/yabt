@@ -12,34 +12,34 @@ size_t indent_level = 0;
 
 void set_log_level(const LogLevel level) noexcept { global_level = level; }
 
-[[nodiscard]] runtime::Result<void, std::string>
+[[nodiscard]] runtime::Result<void>
 set_log_level(std::string_view sv) noexcept {
   if (sv == "ERROR") {
     set_log_level(LogLevel::ERROR);
-    return runtime::Result<void, std::string>::ok();
+    return runtime::Result<void>::ok();
   }
 
   if (sv == "WARNING") {
     set_log_level(LogLevel::WARNING);
-    return runtime::Result<void, std::string>::ok();
+    return runtime::Result<void>::ok();
   }
 
   if (sv == "INFO") {
     set_log_level(LogLevel::INFO);
-    return runtime::Result<void, std::string>::ok();
+    return runtime::Result<void>::ok();
   }
 
   if (sv == "DEBUG") {
     set_log_level(LogLevel::DEBUG);
-    return runtime::Result<void, std::string>::ok();
+    return runtime::Result<void>::ok();
   }
 
   if (sv == "VERBOSE") {
     set_log_level(LogLevel::VERBOSE);
-    return runtime::Result<void, std::string>::ok();
+    return runtime::Result<void>::ok();
   }
 
-  return runtime::Result<void, std::string>::error(std::format(
+  return runtime::Result<void>::error(std::format(
       "Unknown log level {}. Available log levels: \"ERROR\", \"WARNING\", "
       "\"INFO\", \"DEBUG\", \"VERBOSE\"",
       sv));

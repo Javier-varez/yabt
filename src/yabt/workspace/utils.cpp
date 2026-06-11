@@ -19,18 +19,18 @@ namespace {
 // it originates from a (possibly transitively fetched, untrusted) module file,
 // it must not be allowed to escape the deps directory. Reject anything that is
 // not a single, plain path component.
-[[nodiscard]] runtime::Result<void, std::string>
+[[nodiscard]] runtime::Result<void>
 validate_dep_name(std::string_view dep_name) noexcept {
   if (dep_name.empty() || dep_name == "." || dep_name == "..") {
-    return runtime::Result<void, std::string>::error(
+    return runtime::Result<void>::error(
         std::format("Invalid dependency name: \"{}\"", dep_name));
   }
   if (dep_name.find('/') != std::string_view::npos ||
       dep_name.find('\\') != std::string_view::npos) {
-    return runtime::Result<void, std::string>::error(std::format(
+    return runtime::Result<void>::error(std::format(
         "Dependency name must be a single path component: \"{}\"", dep_name));
   }
-  return runtime::Result<void, std::string>::ok();
+  return runtime::Result<void>::ok();
 }
 
 } // namespace
@@ -58,9 +58,8 @@ get_workspace_root() noexcept {
   }
 }
 
-runtime::Result<void, std::string>
-sync_workspace(std::filesystem::path ws_root,
-               const SyncMode sync_mode) noexcept {
+runtime::Result<void> sync_workspace(std::filesystem::path ws_root,
+                                     const SyncMode sync_mode) noexcept {
   const std::filesystem::path deps_dir = ws_root / DEPS_DIR_NAME;
 
   struct PinnedMod {
@@ -103,7 +102,7 @@ sync_workspace(std::filesystem::path ws_root,
           module::open_or_fetch_module(dep_dir, dep.url, dep.type, dep.hash));
 
       if ((dep.hash == "") && (sync_mode == SyncMode::STRICT)) {
-        return runtime::Result<void, std::string>::error(std::format(
+        return runtime::Result<void>::error(std::format(
             "Dependency {} of {} is not pinned. Refusing to sync in strict "
             "mode.",
             dep_name, current_module_dir.filename().native()));
@@ -112,7 +111,7 @@ sync_workspace(std::filesystem::path ws_root,
       if (pinned_modules.contains(dep_name)) {
         const PinnedMod &pinned = pinned_modules[dep_name];
         if (pinned.hash != dep.hash && dep.hash != "") {
-          return runtime::Result<void, std::string>::error(std::format(
+          return runtime::Result<void>::error(std::format(
               "Dependency {} requires hash {}, but it has been pinned to {}",
               dep_name, dep.hash, pinned.hash));
         }
@@ -125,7 +124,7 @@ sync_workspace(std::filesystem::path ws_root,
       if (dep.hash != "") {
         const auto ancestor_result = module->is_ancestor(dep.hash, dep.version);
         if (ancestor_result.is_error() || !ancestor_result.ok_value()) {
-          return runtime::Result<void, std::string>::error(std::format(
+          return runtime::Result<void>::error(std::format(
               "Dependency {} has a hash: {} that is not an ancestor "
               "of its version: {}",
               dep_name, dep.hash, dep.version));
@@ -157,16 +156,16 @@ sync_workspace(std::filesystem::path ws_root,
     }
   }
 
-  return runtime::Result<void, std::string>::ok();
+  return runtime::Result<void>::ok();
 }
 
-[[nodiscard]] runtime::Result<module::ModuleFile, std::string>
+[[nodiscard]] runtime::Result<module::ModuleFile>
 load_root_module_file(const std::filesystem::path &ws_root) noexcept {
   const std::filesystem::path modfile_path = ws_root / module::MODULE_FILE_NAME;
   return module::ModuleFile::load_module_file(modfile_path);
 }
 
-runtime::Result<std::vector<std::unique_ptr<module::Module>>, std::string>
+runtime::Result<std::vector<std::unique_ptr<module::Module>>>
 open_workspace(const std::filesystem::path &ws_root) noexcept {
   const std::filesystem::path deps_dir = ws_root / DEPS_DIR_NAME;
 
@@ -215,8 +214,8 @@ open_workspace(const std::filesystem::path &ws_root) noexcept {
     }
   }
 
-  return runtime::Result<std::vector<std::unique_ptr<module::Module>>,
-                         std::string>::ok(std::move(all_modules));
+  return runtime::Result<std::vector<std::unique_ptr<module::Module>>>::ok(
+      std::move(all_modules));
 }
 
 } // namespace yabt::workspace

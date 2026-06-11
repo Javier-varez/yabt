@@ -7,19 +7,18 @@
 
 namespace yabt::process {
 
-runtime::Result<void, std::string>
-Process::ProcessOutput::to_result() const noexcept {
+runtime::Result<void> Process::ProcessOutput::to_result() const noexcept {
   return std::visit(
       [this]<typename T>(const T v) {
         if constexpr (std::same_as<T, NormalExit>) {
           if (v.exit_code == 0) {
-            return runtime::Result<void, std::string>::ok();
+            return runtime::Result<void>::ok();
           }
-          return runtime::Result<void, std::string>::error(
+          return runtime::Result<void>::error(
               std::format("Exited with code {}\nstderr: {}", v.exit_code,
                           stderr.value_or("")));
         } else if constexpr (std::same_as<T, UnhandledSignal>) {
-          return runtime::Result<void, std::string>::error(
+          return runtime::Result<void>::error(
               std::format("Exited with signal {}\nstderr: {}", v.signal,
                           stderr.value_or("")));
         }
@@ -46,7 +45,7 @@ void Process::set_cwd(const std::string_view path) {
   m_cwd = path;
 }
 
-[[nodiscard]] runtime::Result<void, std::string>
+[[nodiscard]] runtime::Result<void>
 Process::start(const bool capture_stdout) noexcept {
   yabt::runtime::check(m_status == Status::CREATED,
                        "Process is not in the created status");
@@ -69,7 +68,7 @@ Process::start(const bool capture_stdout) noexcept {
 
   const pid_t pid = fork();
   if (pid == -1) {
-    return yabt::runtime::Result<void, std::string>::error(
+    return yabt::runtime::Result<void>::error(
         std::format("Failed to fork process: {}", strerror(errno)));
   }
 
@@ -109,7 +108,7 @@ Process::start(const bool capture_stdout) noexcept {
     close(stderr_pipes[1]);
   }
 
-  return yabt::runtime::Result<void, std::string>::ok();
+  return yabt::runtime::Result<void>::ok();
 }
 
 [[nodiscard]] Process::ExitReason Process::wait_completion() noexcept {

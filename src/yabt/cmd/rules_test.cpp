@@ -17,7 +17,7 @@ const std::string_view SHORT_DESCRIPTION =
 const std::string_view LONG_DESCRIPTION =
     "Interact with the rules of the repository.";
 
-[[nodiscard]] runtime::Result<std::string, std::string>
+[[nodiscard]] runtime::Result<std::string>
 get_luarocks_path(const bool cpath) noexcept {
   const char *type = "--lr-path";
   if (cpath) {
@@ -30,27 +30,25 @@ get_luarocks_path(const bool cpath) noexcept {
   const auto output = proc.process_output();
   RESULT_PROPAGATE_DISCARD(output.to_result());
 
-  return runtime::Result<std::string, std::string>::ok(
-      output.stdout.value_or(""));
+  return runtime::Result<std::string>::ok(output.stdout.value_or(""));
 }
 
 } // namespace
 
-[[nodiscard]] runtime::Result<void, std::string>
+[[nodiscard]] runtime::Result<void>
 RulesTestCommand::register_command(cli::CliParser &cli_parser) noexcept {
   yabt::cli::Subcommand &subcommand = cli_parser.register_subcommand(
       "rules_test", *this, SHORT_DESCRIPTION, LONG_DESCRIPTION);
   static_cast<void>(subcommand);
-  return runtime::Result<void, std::string>::ok();
+  return runtime::Result<void>::ok();
 }
 
-[[nodiscard]] runtime::Result<void, std::string>
-RulesTestCommand::handle_subcommand(
+[[nodiscard]] runtime::Result<void> RulesTestCommand::handle_subcommand(
     std::span<const std::string_view> /*extra_args*/) noexcept {
   const std::optional<std::filesystem::path> ws_root =
       workspace::get_workspace_root();
   if (!ws_root.has_value()) {
-    return runtime::Result<void, std::string>::error(
+    return runtime::Result<void>::error(
         std::format("Could not find workspace root. Are you sure your "
                     "directory tree contains a {} file?",
                     module::MODULE_FILE_NAME));
@@ -86,7 +84,7 @@ RulesTestCommand::handle_subcommand(
   RESULT_PROPAGATE_DISCARD(
       lua_engine.exec_string("require 'busted.runner' { standalone = false }"));
 
-  return runtime::Result<void, std::string>::ok();
+  return runtime::Result<void>::ok();
 }
 
 } // namespace yabt::cmd

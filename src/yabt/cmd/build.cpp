@@ -18,7 +18,7 @@ const std::string_view LONG_DESCRIPTION =
     "is ... (TBD)";
 } // namespace
 
-[[nodiscard]] runtime::Result<void, std::string>
+[[nodiscard]] runtime::Result<void>
 BuildCommand::register_command(cli::CliParser &cli_parser) noexcept {
   yabt::cli::Subcommand &subcommand = cli_parser.register_subcommand(
       "build", *this, SHORT_DESCRIPTION, LONG_DESCRIPTION);
@@ -32,7 +32,7 @@ BuildCommand::register_command(cli::CliParser &cli_parser) noexcept {
       .handler{[this](const cli::Arg &a) {
         const cli::IntegerArg arg = std::get<cli::IntegerArg>(a);
         this->m_threads = arg.value;
-        return runtime::Result<void, std::string>::ok();
+        return runtime::Result<void>::ok();
       }},
   }));
 
@@ -45,7 +45,7 @@ BuildCommand::register_command(cli::CliParser &cli_parser) noexcept {
       .handler{[this](const cli::Arg &a) {
         const cli::StringArg arg = std::get<cli::StringArg>(a);
         this->m_build_dir = arg.value;
-        return runtime::Result<void, std::string>::ok();
+        return runtime::Result<void>::ok();
       }},
   }));
 
@@ -57,13 +57,12 @@ BuildCommand::register_command(cli::CliParser &cli_parser) noexcept {
       .description{"Generates a compilation database in the build directory"},
       .handler{[this](const cli::Arg &) {
         this->m_compdb = true;
-        return runtime::Result<void, std::string>::ok();
+        return runtime::Result<void>::ok();
       }},
   });
 }
 
-[[nodiscard]] runtime::Result<void, std::string>
-BuildCommand::handle_subcommand(
+[[nodiscard]] runtime::Result<void> BuildCommand::handle_subcommand(
     std::span<const std::string_view> arguments) noexcept {
   const build::BuildArgs build_args = build::parse_args(arguments);
   if (runtime::Result result =
@@ -73,7 +72,7 @@ BuildCommand::handle_subcommand(
     exit(EXIT_FAILURE);
   }
 
-  return runtime::Result<void, std::string>::ok();
+  return runtime::Result<void>::ok();
 }
 
 } // namespace yabt::cmd

@@ -17,12 +17,12 @@ const std::string_view SHORT_DESCRIPTION = "Lists the requested targets";
 const std::string_view LONG_DESCRIPTION =
     "Lists requested targets that match the specified target spec.";
 
-[[nodiscard]] runtime::Result<void, std::string>
+[[nodiscard]] runtime::Result<void>
 list_inner(const std::span<const std::string_view> arguments) {
   const std::optional<std::filesystem::path> ws_root =
       workspace::get_workspace_root();
   if (!ws_root.has_value()) {
-    return runtime::Result<void, std::string>::error(
+    return runtime::Result<void>::error(
         std::format("Could not find workspace root. Are you sure your "
                     "directory tree contains a {} file?",
                     module::MODULE_FILE_NAME));
@@ -73,26 +73,26 @@ list_inner(const std::span<const std::string_view> arguments) {
     puts(std::format("{}", target).c_str());
   }
 
-  return runtime::Result<void, std::string>::ok();
+  return runtime::Result<void>::ok();
 }
 
 } // namespace
 
-[[nodiscard]] runtime::Result<void, std::string>
+[[nodiscard]] runtime::Result<void>
 ListCommand::register_command(cli::CliParser &cli_parser) noexcept {
   yabt::cli::Subcommand &subcommand = cli_parser.register_subcommand(
       "list", *this, SHORT_DESCRIPTION, LONG_DESCRIPTION);
   static_cast<void>(subcommand);
-  return runtime::Result<void, std::string>::ok();
+  return runtime::Result<void>::ok();
 }
 
-[[nodiscard]] runtime::Result<void, std::string> ListCommand::handle_subcommand(
+[[nodiscard]] runtime::Result<void> ListCommand::handle_subcommand(
     std::span<const std::string_view> target_patterns) noexcept {
   if (runtime::Result result = list_inner(target_patterns); result.is_error()) {
     yabt_error("List failed: {}", result.error_value());
   }
 
-  return runtime::Result<void, std::string>::ok();
+  return runtime::Result<void>::ok();
 }
 
 } // namespace yabt::cmd

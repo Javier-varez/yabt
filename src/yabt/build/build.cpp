@@ -42,7 +42,7 @@ void register_modules(lua::LuaEngine &engine, LuaModules &modules) noexcept {
   });
 }
 
-runtime::Result<lua::LuaEngine, std::string> prepare_lua_engine(
+runtime::Result<lua::LuaEngine> prepare_lua_engine(
     const std::filesystem::path &ws_root, LuaModules &lua_modules,
     const std::span<const std::unique_ptr<module::Module>> yabt_modules,
     const std::span<const LuaPath> extra_paths) noexcept {
@@ -71,10 +71,10 @@ runtime::Result<lua::LuaEngine, std::string> prepare_lua_engine(
   engine.set_preloaded_lua_packages(embed::get_embedded_lua_rules());
   yabt_debug("Configured preloads");
 
-  return runtime::Result<lua::LuaEngine, std::string>::ok(std::move(engine));
+  return runtime::Result<lua::LuaEngine>::ok(std::move(engine));
 }
 
-[[nodiscard]] runtime::Result<void, std::string> invoke_rule_initializers(
+[[nodiscard]] runtime::Result<void> invoke_rule_initializers(
     lua::LuaEngine &engine,
     std::span<const std::unique_ptr<module::Module>> modules) noexcept {
 
@@ -97,10 +97,10 @@ runtime::Result<lua::LuaEngine, std::string> prepare_lua_engine(
     }
   }
 
-  return runtime::Result<void, std::string>::ok();
+  return runtime::Result<void>::ok();
 }
 
-[[nodiscard]] runtime::Result<void, std::string> invoke_build_targets(
+[[nodiscard]] runtime::Result<void> invoke_build_targets(
     lua::LuaEngine &engine,
     std::span<const std::unique_ptr<module::Module>> modules) noexcept {
 
@@ -154,14 +154,14 @@ merge_yabt_flags(const BuildArgs &build_args,
   return flags;
 }
 
-[[nodiscard]] runtime::Result<void, std::string>
+[[nodiscard]] runtime::Result<void>
 execute_build(const int threads, const bool compdb,
               const std::optional<std::filesystem::path> &requested_build_dir,
               const BuildArgs &build_args, const PostBuildMode mode) {
   const std::optional<std::filesystem::path> ws_root =
       workspace::get_workspace_root();
   if (!ws_root.has_value()) {
-    return runtime::Result<void, std::string>::error(
+    return runtime::Result<void>::error(
         std::format("Could not find workspace root. Are you sure your "
                     "directory tree contains a {} file?",
                     module::MODULE_FILE_NAME));
@@ -235,7 +235,7 @@ execute_build(const int threads, const bool compdb,
 
   if (targets.size() == 0) {
     yabt_warn("No matched targets");
-    return runtime::Result<void, std::string>::ok();
+    return runtime::Result<void>::ok();
   }
 
   // Run build process
@@ -281,7 +281,7 @@ execute_build(const int threads, const bool compdb,
     }
   }
 
-  return runtime::Result<void, std::string>::ok();
+  return runtime::Result<void>::ok();
 }
 
 } // namespace yabt::build

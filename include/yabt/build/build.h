@@ -24,7 +24,7 @@ constexpr static std::string_view INIT_FILE_NAME = "INIT.lua";
 
 enum class PostBuildMode { None, Run, Test };
 
-[[nodiscard]] runtime::Result<void, std::string>
+[[nodiscard]] runtime::Result<void>
 execute_build(int threads, bool compdb,
               const std::optional<std::filesystem::path> &requested_build_dir,
               const BuildArgs &build_args,
@@ -51,16 +51,16 @@ struct LuaPath {
     const std::filesystem::path &build_dir,
     std::span<const std::unique_ptr<module::Module>> yabt_modules) noexcept;
 
-runtime::Result<lua::LuaEngine, std::string> prepare_lua_engine(
+runtime::Result<lua::LuaEngine> prepare_lua_engine(
     const std::filesystem::path &ws_root, LuaModules &lua_modules,
     const std::span<const std::unique_ptr<module::Module>> yabt_modules,
     const std::span<const LuaPath> extra_paths) noexcept;
 
-[[nodiscard]] runtime::Result<void, std::string> invoke_rule_initializers(
+[[nodiscard]] runtime::Result<void> invoke_rule_initializers(
     lua::LuaEngine &engine,
     std::span<const std::unique_ptr<module::Module>> modules) noexcept;
 
-[[nodiscard]] runtime::Result<void, std::string>
+[[nodiscard]] runtime::Result<void>
 invoke_build_targets(lua::LuaEngine &engine,
                      std::span<const std::unique_ptr<module::Module>>) noexcept;
 

@@ -29,9 +29,9 @@ ContextLib *get_lib_from_registry(lua_State *const L) {
   return lib;
 }
 
-runtime::Result<void, std::string> add_build_step_impl(ContextLib &lib) {
+runtime::Result<void> add_build_step_impl(ContextLib &lib) {
   if (lua_gettop(lib.state) != 1) {
-    return runtime::Result<void, std::string>::error(
+    return runtime::Result<void>::error(
         std::format("Expected 1 argument to add_build_step, but got: {}",
                     lua_gettop(lib.state)));
   }
@@ -39,7 +39,7 @@ runtime::Result<void, std::string> add_build_step_impl(ContextLib &lib) {
   const ninja::BuildStep step =
       RESULT_PROPAGATE(parse_lua_object<ninja::BuildStep>(lib.state));
   if (step.outs.size() == 0) {
-    return runtime::Result<void, std::string>::error(
+    return runtime::Result<void>::error(
         std::format("build step does not contain any outputs"));
   }
   if (const auto it = lib.build_step_map.find(step.outs.front().path);
@@ -47,7 +47,7 @@ runtime::Result<void, std::string> add_build_step_impl(ContextLib &lib) {
     // Check duplicate
     const ninja::BuildStep &other = lib.build_steps[it->second];
     if (other != step) {
-      return runtime::Result<void, std::string>::error(std::format(
+      return runtime::Result<void>::error(std::format(
           "Attempted to register conflicting build step for out: {}",
           step.outs.front().path));
     }
@@ -67,7 +67,7 @@ runtime::Result<void, std::string> add_build_step_impl(ContextLib &lib) {
   }
 
   lua_pop(lib.state, 1);
-  return runtime::Result<void, std::string>::ok();
+  return runtime::Result<void>::ok();
 }
 
 void add_build_step(ContextLib &lib) {
@@ -77,7 +77,7 @@ void add_build_step(ContextLib &lib) {
       return;
     }
 
-    lua_pushstring(lib.state, result.error_value().c_str());
+    lua_pushstring(lib.state, result.error_value().message().c_str());
   }
 
   // This call does longjmp, which breaks destructors of data types, since they
@@ -93,10 +93,9 @@ int l_add_build_step(lua_State *const L) {
   return 0;
 }
 
-runtime::Result<void, std::string>
-add_build_step_with_rule_impl(ContextLib &lib) {
+runtime::Result<void> add_build_step_with_rule_impl(ContextLib &lib) {
   if (lua_gettop(lib.state) != 2) {
-    return runtime::Result<void, std::string>::error(std::format(
+    return runtime::Result<void>::error(std::format(
         "Expected 2 arguments to add_build_step_with_rule, but got: {}",
         lua_gettop(lib.state)));
   }
@@ -113,7 +112,7 @@ add_build_step_with_rule_impl(ContextLib &lib) {
   const ninja::BuildStepWithRule step =
       RESULT_PROPAGATE(parse_lua_object<ninja::BuildStepWithRule>(lib.state));
   if (step.outs.size() == 0) {
-    return runtime::Result<void, std::string>::error(
+    return runtime::Result<void>::error(
         "Attempted to register build_steps_with_rule without an out");
   }
 
@@ -123,7 +122,7 @@ add_build_step_with_rule_impl(ContextLib &lib) {
     const ninja::BuildStepWithRule &other =
         lib.build_steps_with_rule[it->second];
     if (other != step) {
-      return runtime::Result<void, std::string>::error(std::format(
+      return runtime::Result<void>::error(std::format(
           "Attempted to register conflicting build step with rule for out: {}",
           step.outs.front().path));
     }
@@ -144,7 +143,7 @@ add_build_step_with_rule_impl(ContextLib &lib) {
 
   lua_pop(lib.state, 1);
 
-  return runtime::Result<void, std::string>::ok();
+  return runtime::Result<void>::ok();
 }
 
 void add_build_step_with_rule(ContextLib &lib) {
@@ -154,7 +153,7 @@ void add_build_step_with_rule(ContextLib &lib) {
       return;
     }
 
-    lua_pushstring(lib.state, result.error_value().c_str());
+    lua_pushstring(lib.state, result.error_value().message().c_str());
   }
 
   // This call does longjmp, which breaks destructors of data types, since they
@@ -276,13 +275,13 @@ static const luaL_Reg context_functions[]{
 
 static constexpr const char CONTEXT_PACKAGE_NAME[] = "yabt.core.context";
 
-runtime::Result<std::vector<std::string>, std::string>
+runtime::Result<std::vector<std::string>>
 call_fn_impl(lua_State *const L, const std::map<std::string, int> &fn_refs,
              const std::string_view method_name, const std::string &target,
              std::span<const std::string_view> args) {
   const auto fn_ref_iter = fn_refs.find(target);
   if (fn_ref_iter == fn_refs.cend()) {
-    return runtime::Result<std::vector<std::string>, std::string>::error(
+    return runtime::Result<std::vector<std::string>>::error(
         std::format("Target {} has no {}() method", target, method_name));
   }
 
@@ -298,28 +297,25 @@ call_fn_impl(lua_State *const L, const std::map<std::string, int> &fn_refs,
   if (lua_pcall(L, 1, 1, 0) != 0) {
     const std::string err{lua_tostring(L, -1)};
     lua_pop(L, 1);
-    return runtime::Result<std::vector<std::string>, std::string>::error(
+    return runtime::Result<std::vector<std::string>>::error(
         std::format("{}() for target {} failed: {}", method_name, target, err));
   }
 
   if (!lua_istable(L, -1)) {
     lua_pop(L, 1);
-    return runtime::Result<std::vector<std::string>, std::string>::error(
-        std::format("{}() for target {} must return a table", method_name,
-                    target));
+    return runtime::Result<std::vector<std::string>>::error(std::format(
+        "{}() for target {} must return a table", method_name, target));
   }
 
   auto result = RESULT_PROPAGATE(parse_lua_object<std::vector<std::string>>(L));
   lua_pop(L, 1);
 
   if (result.empty()) {
-    return runtime::Result<std::vector<std::string>, std::string>::error(
-        std::format("{}() for target {} returned empty table", method_name,
-                    target));
+    return runtime::Result<std::vector<std::string>>::error(std::format(
+        "{}() for target {} returned empty table", method_name, target));
   }
 
-  return runtime::Result<std::vector<std::string>, std::string>::ok(
-      std::move(result));
+  return runtime::Result<std::vector<std::string>>::ok(std::move(result));
 }
 
 } // namespace
@@ -362,13 +358,13 @@ void ContextLib::register_in_engine(lua_State *const L) {
   init_registry(L, this);
 }
 
-runtime::Result<std::vector<std::string>, std::string>
+runtime::Result<std::vector<std::string>>
 ContextLib::call_run_fn(const std::string &target,
                         std::span<const std::string_view> args) {
   return call_fn_impl(state, run_fn_refs, "run", target, args);
 }
 
-runtime::Result<std::vector<std::string>, std::string>
+runtime::Result<std::vector<std::string>>
 ContextLib::call_test_fn(const std::string &target,
                          std::span<const std::string_view> args) {
   return call_fn_impl(state, test_fn_refs, "test", target, args);

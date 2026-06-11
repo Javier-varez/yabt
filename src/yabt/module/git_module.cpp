@@ -16,11 +16,11 @@ using ProcessOutput = process::Process::ProcessOutput;
 
 namespace {
 template <typename... Args>
-runtime::Result<process::Process::ProcessOutput, std::string>
+runtime::Result<process::Process::ProcessOutput>
 exec_git_command(Args &&...args) noexcept {
   process::Process git_proc{"git", std::forward<Args>(args)...};
   RESULT_PROPAGATE_DISCARD(git_proc.start(true));
-  return runtime::Result<process::Process::ProcessOutput, std::string>::ok(
+  return runtime::Result<process::Process::ProcessOutput>::ok(
       git_proc.process_output());
 }
 
@@ -35,43 +35,41 @@ exec_git_command(Args &&...args) noexcept {
 //      `transport::address`) syntax can execute arbitrary commands. Standard
 //      URLs use `scheme://` or scp-like `user@host:path` and never contain a
 //      bare `::`, so we reject any URL that does.
-[[nodiscard]] runtime::Result<void, std::string>
+[[nodiscard]] runtime::Result<void>
 validate_git_url(std::string_view mod_url) noexcept {
   if (mod_url.empty()) {
-    return runtime::Result<void, std::string>::error("Dependency URL is empty");
+    return runtime::Result<void>::error("Dependency URL is empty");
   }
   if (mod_url.front() == '-') {
-    return runtime::Result<void, std::string>::error(std::format(
+    return runtime::Result<void>::error(std::format(
         "Refusing to clone dependency URL that looks like a command-line "
         "option: {}",
         mod_url));
   }
   if (mod_url.find("::") != std::string_view::npos) {
-    return runtime::Result<void, std::string>::error(std::format(
+    return runtime::Result<void>::error(std::format(
         "Refusing to clone dependency URL using a git remote-helper transport "
         "(contains \"::\"): {}",
         mod_url));
   }
-  return runtime::Result<void, std::string>::ok();
+  return runtime::Result<void>::ok();
 }
 } // namespace
 
-runtime::Result<std::unique_ptr<Module>, std::string>
+runtime::Result<std::unique_ptr<Module>>
 GitModule::open(std::filesystem::path mod_dir) noexcept {
   if (const std::filesystem::path git_dir = mod_dir / ".git";
       !std::filesystem::exists(git_dir)) {
-    return runtime::Result<std::unique_ptr<Module>, std::string>::error("");
+    return runtime::Result<std::unique_ptr<Module>>::error("");
   }
 
-  return runtime::Result<std::unique_ptr<Module>, std::string>::ok(
+  return runtime::Result<std::unique_ptr<Module>>::ok(
       std::unique_ptr<Module>{new GitModule{mod_dir}});
 }
 
-runtime::Result<std::unique_ptr<Module>, std::string>
-GitModule::open_or_fetch_module(const std::filesystem::path &mod_dir,
-                                std::string_view mod_url,
-                                std::string_view mod_type,
-                                std::string_view mod_hash) noexcept {
+runtime::Result<std::unique_ptr<Module>> GitModule::open_or_fetch_module(
+    const std::filesystem::path &mod_dir, std::string_view mod_url,
+    std::string_view mod_type, std::string_view mod_hash) noexcept {
   if (const std::filesystem::path git_dir = mod_dir / ".git";
       std::filesystem::exists(git_dir)) {
     // Return existing module
@@ -95,7 +93,7 @@ GitModule::open_or_fetch_module(const std::filesystem::path &mod_dir,
 
   yabt_debug("Successfully fetched git module at {}", mod_dir.native());
 
-  return runtime::Result<std::unique_ptr<Module>, std::string>::ok(
+  return runtime::Result<std::unique_ptr<Module>>::ok(
       std::unique_ptr<Module>{new GitModule{mod_dir}});
 }
 
@@ -110,24 +108,22 @@ GitModule::GitModule(const std::filesystem::path &path) noexcept
   return m_path;
 }
 
-[[nodiscard]] runtime::Result<std::string, std::string>
-GitModule::head() const noexcept {
+[[nodiscard]] runtime::Result<std::string> GitModule::head() const noexcept {
   const ProcessOutput process_output = RESULT_PROPAGATE(exec_git_command(
       "-C", m_path.native(), "rev-list", "--max-count=1", "HEAD"));
   RESULT_PROPAGATE_DISCARD(process_output.to_result());
-  return runtime::Result<std::string, std::string>::ok(
+  return runtime::Result<std::string>::ok(
       std::string{utils::trim_whitespace(process_output.stdout.value_or(""))});
 }
 
-[[nodiscard]] runtime::Result<void, std::string>
-GitModule::fetch() const noexcept {
+[[nodiscard]] runtime::Result<void> GitModule::fetch() const noexcept {
   const ProcessOutput process_output = RESULT_PROPAGATE(
       exec_git_command("-C", m_path.native(), "fetch", "--all", "--tags"));
   RESULT_PROPAGATE_DISCARD(process_output.to_result());
-  return runtime::Result<void, std::string>::ok();
+  return runtime::Result<void>::ok();
 }
 
-[[nodiscard]] runtime::Result<bool, std::string>
+[[nodiscard]] runtime::Result<bool>
 GitModule::is_ancestor(std::string_view ancestor,
                        std::string_view revision) const noexcept {
   const ProcessOutput process_output =
@@ -137,14 +133,14 @@ GitModule::is_ancestor(std::string_view ancestor,
       [&process_output]<typename T>(const T v) {
         if constexpr (std::same_as<T, process::Process::NormalExit>) {
           if (v.exit_code != 0 && v.exit_code != 1) {
-            return runtime::Result<bool, std::string>::error(
+            return runtime::Result<bool>::error(
                 std::format("Exited with code {}\nstderr: {}", v.exit_code,
                             process_output.stderr.value_or("")));
           }
-          return runtime::Result<bool, std::string>::ok(!v.exit_code);
+          return runtime::Result<bool>::ok(!v.exit_code);
         } else if constexpr (std::same_as<T,
                                           process::Process::UnhandledSignal>) {
-          return runtime::Result<bool, std::string>::error(
+          return runtime::Result<bool>::error(
               std::format("Exited with signal {}\nstderr: {}", v.signal,
                           process_output.stderr.value_or("")));
         }
@@ -153,7 +149,7 @@ GitModule::is_ancestor(std::string_view ancestor,
       process_output.exit_reason);
 }
 
-[[nodiscard]] runtime::Result<void, std::string>
+[[nodiscard]] runtime::Result<void>
 GitModule::checkout(std::string_view revision) const noexcept {
   const ProcessOutput process_output = RESULT_PROPAGATE(
       exec_git_command("-C", m_path.native(), "checkout", revision));

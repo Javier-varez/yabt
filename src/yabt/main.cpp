@@ -25,7 +25,7 @@ void register_global_options(yabt::cli::CliParser &cli_parser) {
           .description{"Prints additional information for debugging purposes."},
           .handler{[](const yabt::cli::Arg &) {
             yabt::log::set_log_level(yabt::log::LogLevel::VERBOSE);
-            return yabt::runtime::Result<void, std::string>::ok();
+            return yabt::runtime::Result<void>::ok();
           }},
       }),
       "Error registering flag {}");
@@ -55,7 +55,7 @@ void register_global_options(yabt::cli::CliParser &cli_parser) {
           .description{"Disables coloring of the output provided by yabt."},
           .handler{[](const yabt::cli::Arg &) {
             yabt::log::disable_color();
-            return yabt::runtime::Result<void, std::string>::ok();
+            return yabt::runtime::Result<void>::ok();
           }},
       }),
       "Error registering flag {}");

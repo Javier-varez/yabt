@@ -19,17 +19,15 @@ public:
 
   [[nodiscard]] virtual std::filesystem::path disk_path() const noexcept = 0;
 
-  [[nodiscard]] virtual runtime::Result<std::string, std::string>
-  head() const noexcept = 0;
+  [[nodiscard]] virtual runtime::Result<std::string> head() const noexcept = 0;
 
-  [[nodiscard]] virtual runtime::Result<void, std::string>
-  fetch() const noexcept = 0;
+  [[nodiscard]] virtual runtime::Result<void> fetch() const noexcept = 0;
 
-  [[nodiscard]] virtual runtime::Result<bool, std::string>
+  [[nodiscard]] virtual runtime::Result<bool>
   is_ancestor(std::string_view ancestor,
               std::string_view revision) const noexcept = 0;
 
-  [[nodiscard]] virtual runtime::Result<void, std::string>
+  [[nodiscard]] virtual runtime::Result<void>
   checkout(std::string_view revision) const noexcept = 0;
 
   [[nodiscard]] std::optional<std::filesystem::path> rules_dir() const noexcept;
@@ -37,12 +35,12 @@ public:
   virtual ~Module() = default;
 };
 
-[[nodiscard]] runtime::Result<std::unique_ptr<Module>, std::string>
+[[nodiscard]] runtime::Result<std::unique_ptr<Module>>
 open_or_fetch_module(const std::filesystem::path &mod_dir,
                      std::string_view mod_url, std::string_view mod_type,
                      std::string_view mod_hash);
 
-[[nodiscard]] runtime::Result<std::unique_ptr<Module>, std::string>
+[[nodiscard]] runtime::Result<std::unique_ptr<Module>>
 open_module(const std::filesystem::path &mod_dir);
 
 } // namespace yabt::module

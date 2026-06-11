@@ -96,11 +96,10 @@ int l_flag_handle_value(lua_State *L) {
   }
 
   FlagLib *const flag_lib = get_lib_from_registry(L);
-  runtime::Result<FlagValue, std::string> value =
-      flag_lib->retrieve_value(udata);
+  runtime::Result<FlagValue> value = flag_lib->retrieve_value(udata);
   if (value.is_error()) {
     lua_pop(L, lua_gettop(L));
-    lua_pushstring(L, value.error_value().c_str());
+    lua_pushstring(L, value.error_value().message().c_str());
     lua_error(L);
   }
 
@@ -160,7 +159,7 @@ int l_register_flag(lua_State *const L) {
   const auto result = flag_lib->register_flag(L);
   if (result.is_error()) {
     lua_pop(L, lua_gettop(L));
-    lua_pushstring(L, result.error_value().c_str());
+    lua_pushstring(L, result.error_value().message().c_str());
     lua_error(L);
   }
   lua_pop(L, 1);
@@ -177,26 +176,26 @@ int string_flag_key;
 int int_flag_key;
 int enum_flag_key;
 
-[[nodiscard]] runtime::Result<FlagType, std::string>
+[[nodiscard]] runtime::Result<FlagType>
 lua_flag_key_to_type(void *key) noexcept {
   if (key == &int_flag_key) {
-    return runtime::Result<FlagType, std::string>::ok(FlagType::INTEGER);
+    return runtime::Result<FlagType>::ok(FlagType::INTEGER);
   } else if (key == &string_flag_key) {
-    return runtime::Result<FlagType, std::string>::ok(FlagType::STRING);
+    return runtime::Result<FlagType>::ok(FlagType::STRING);
   } else if (key == &enum_flag_key) {
-    return runtime::Result<FlagType, std::string>::ok(FlagType::ENUM);
+    return runtime::Result<FlagType>::ok(FlagType::ENUM);
   }
-  return runtime::Result<FlagType, std::string>::error(
+  return runtime::Result<FlagType>::error(
       "Invalid flag type! Expected one of `flags.StringFlag`, `flags.EnumFlag` "
       "or `flags.IntFlag`");
 }
 
-[[nodiscard]] runtime::Result<FlagValue, std::string>
+[[nodiscard]] runtime::Result<FlagValue>
 resolve_flag(const StringFlagSpec &, const RawFlag &raw_flag) noexcept {
-  return runtime::Result<FlagValue, std::string>::ok(raw_flag.value);
+  return runtime::Result<FlagValue>::ok(raw_flag.value);
 }
 
-[[nodiscard]] runtime::Result<FlagValue, std::string>
+[[nodiscard]] runtime::Result<FlagValue>
 resolve_flag(const EnumFlagSpec &spec, const RawFlag &raw_flag) noexcept {
   bool found = false;
   for (const std::string &allowed_val : spec.allowed_values) {
@@ -220,34 +219,33 @@ resolve_flag(const EnumFlagSpec &spec, const RawFlag &raw_flag) noexcept {
                        spec.allowed_values[i]);
       }
     }
-    return runtime::Result<FlagValue, std::string>::error(error_msg);
+    return runtime::Result<FlagValue>::error(error_msg);
   }
-  return runtime::Result<FlagValue, std::string>::ok(raw_flag.value);
+  return runtime::Result<FlagValue>::ok(raw_flag.value);
 }
 
-[[nodiscard]] runtime::Result<FlagValue, std::string>
+[[nodiscard]] runtime::Result<FlagValue>
 resolve_flag(const IntFlagSpec &spec, const RawFlag &raw_flag) noexcept {
   char *end{nullptr};
   const long parsed = strtol(raw_flag.value.c_str(), &end, 0);
   if ((end - raw_flag.value.c_str()) !=
       static_cast<long>(raw_flag.value.size())) {
-    return runtime::Result<FlagValue, std::string>::error(
+    return runtime::Result<FlagValue>::error(
         std::format("Invalid integer value of \"{}\" for flag \"{}\"",
                     raw_flag.value, spec.name));
   }
 
   if (parsed > spec.range.max || parsed < spec.range.min) {
-    return runtime::Result<FlagValue, std::string>::error(
+    return runtime::Result<FlagValue>::error(
         std::format("Out of range value of \"{}\" for flag \"{}\". Expected a "
                     "value in range [{}, {}]",
                     parsed, spec.name, spec.range.min, spec.range.max));
   }
 
-  return runtime::Result<FlagValue, std::string>::ok(
-      FlagValue{static_cast<int>(parsed)});
+  return runtime::Result<FlagValue>::ok(FlagValue{static_cast<int>(parsed)});
 }
 
-[[nodiscard]] runtime::Result<FlagValue, std::string>
+[[nodiscard]] runtime::Result<FlagValue>
 resolve_flag(const FlagSpec &spec, const RawFlag &raw_flag) noexcept {
   return std::visit(
       [&raw_flag](const auto &spec) { return resolve_flag(spec, raw_flag); },
@@ -307,10 +305,9 @@ void FlagLib::register_in_engine(lua_State *const L) {
   init_flag_handle_metatable(L);
 }
 
-runtime::Result<FlagSpec, std::string>
-FlagLib::register_flag(lua_State *const L) {
+runtime::Result<FlagSpec> FlagLib::register_flag(lua_State *const L) {
   if (m_resolved) {
-    return runtime::Result<FlagSpec, std::string>::error(
+    return runtime::Result<FlagSpec>::error(
         "Flags have already been resolved! Cannot register any more flags at "
         "this point. Ensure that flag registration is called in an INIT.lua "
         "file");
@@ -319,14 +316,13 @@ FlagLib::register_flag(lua_State *const L) {
   FlatFlagSpec flat = RESULT_PROPAGATE(parse_lua_object<FlatFlagSpec>(L));
 
   if (!flat.name.has_value()) {
-    return runtime::Result<FlagSpec, std::string>::error(
-        "Flag does not have a name");
+    return runtime::Result<FlagSpec>::error("Flag does not have a name");
   }
   const std::string name = flat.name.value();
   const std::string description = flat.description.value_or("");
 
   if (m_registered_flags.contains(name)) {
-    return runtime::Result<FlagSpec, std::string>::error(
+    return runtime::Result<FlagSpec>::error(
         std::format("Duplicated flag spec for name: {}", name));
   }
 
@@ -335,11 +331,11 @@ FlagLib::register_flag(lua_State *const L) {
   switch (RESULT_PROPAGATE(lua_flag_key_to_type(flat.type))) {
   case FlagType::ENUM: {
     if (!flat.values.has_value() || flat.values.value().size() == 0) {
-      return runtime::Result<FlagSpec, std::string>::error(
+      return runtime::Result<FlagSpec>::error(
           std::format("Enum flag spec \"{}\" has no valid values", name));
     }
     if (flat.range.has_value()) {
-      return runtime::Result<FlagSpec, std::string>::error(std::format(
+      return runtime::Result<FlagSpec>::error(std::format(
           "Enum flag spec \"{}\" was given invalid \"range\" property", name));
     }
     flag = EnumFlagSpec{
@@ -352,12 +348,12 @@ FlagLib::register_flag(lua_State *const L) {
   }
   case FlagType::INTEGER: {
     if (flat.values.has_value()) {
-      return runtime::Result<FlagSpec, std::string>::error(std::format(
+      return runtime::Result<FlagSpec>::error(std::format(
           "Int flag spec \"{}\" was given invalid \"values\" property", name));
     }
     const IntFlagRange range = flat.range.value_or(IntFlagRange{});
     if (range.min > range.max) {
-      return runtime::Result<FlagSpec, std::string>::error(
+      return runtime::Result<FlagSpec>::error(
           std::format("Invalid range for yabt flag \"{}\": [{}, {}]", name,
                       range.min, range.max));
     }
@@ -371,12 +367,12 @@ FlagLib::register_flag(lua_State *const L) {
   }
   case FlagType::STRING: {
     if (flat.values.has_value()) {
-      return runtime::Result<FlagSpec, std::string>::error(std::format(
+      return runtime::Result<FlagSpec>::error(std::format(
           "String flag spec \"{}\" was given invalid \"values\" property",
           name));
     }
     if (flat.range.has_value()) {
-      return runtime::Result<FlagSpec, std::string>::error(std::format(
+      return runtime::Result<FlagSpec>::error(std::format(
           "String flag spec \"{}\" was given invalid \"range\" property",
           name));
     }
@@ -390,7 +386,7 @@ FlagLib::register_flag(lua_State *const L) {
   };
 
   m_registered_flags.insert(std::pair(name, flag));
-  return runtime::Result<FlagSpec, std::string>::ok(flag);
+  return runtime::Result<FlagSpec>::ok(flag);
 }
 
 const std::unordered_map<std::string, FlagSpec> &
@@ -406,13 +402,13 @@ FlagLib::flag_values() const noexcept {
   return m_resolved_flags;
 }
 
-runtime::Result<void, std::string>
+runtime::Result<void>
 FlagLib::resolve_flag_values(const std::span<const RawFlag> flags) noexcept {
   runtime::check(!m_resolved, "BUG: Flags have already been resolved");
   m_resolved = true;
   for (const RawFlag &flag : flags) {
     if (!m_registered_flags.contains(flag.key)) {
-      return runtime::Result<void, std::string>::error(
+      return runtime::Result<void>::error(
           std::format("Unknown yabt flag \"{}\"", flag.key));
     }
 
@@ -421,7 +417,7 @@ FlagLib::resolve_flag_values(const std::span<const RawFlag> flags) noexcept {
         RESULT_PROPAGATE(resolve_flag(flag_spec, flag));
 
     if (m_resolved_flags.contains(flag.key)) {
-      return runtime::Result<void, std::string>::error(
+      return runtime::Result<void>::error(
           std::format("Flag \"{}\" was given more than once", flag.key));
     }
 
@@ -443,22 +439,22 @@ FlagLib::resolve_flag_values(const std::span<const RawFlag> flags) noexcept {
       continue;
     }
 
-    return runtime::Result<void, std::string>::error(
+    return runtime::Result<void>::error(
         std::format("No value given for flag \"{}\"", name));
   }
 
-  return runtime::Result<void, std::string>::ok();
+  return runtime::Result<void>::ok();
 }
 
-[[nodiscard]] runtime::Result<FlagValue, std::string>
+[[nodiscard]] runtime::Result<FlagValue>
 FlagLib::retrieve_value(FlagSpec *spec) const noexcept {
   const std::string flag_name{get_flag_name(*spec)};
   auto iter = m_resolved_flags.find(flag_name);
   if (iter == m_resolved_flags.cend()) {
-    return runtime::Result<FlagValue, std::string>::error(
+    return runtime::Result<FlagValue>::error(
         std::format("Unable to obtain value for flag \"{}\"", flag_name));
   }
-  return runtime::Result<FlagValue, std::string>::ok(iter->second);
+  return runtime::Result<FlagValue>::ok(iter->second);
 }
 
 } // namespace yabt::lua

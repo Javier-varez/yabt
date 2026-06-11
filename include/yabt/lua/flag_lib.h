@@ -81,10 +81,10 @@ public:
   [[nodiscard]] const std::unordered_map<std::string, FlagValue> &
   flag_values() const noexcept;
 
-  [[nodiscard]] runtime::Result<void, std::string>
+  [[nodiscard]] runtime::Result<void>
   resolve_flag_values(const std::span<const RawFlag> flags) noexcept;
 
-  [[nodiscard]] runtime::Result<FlagValue, std::string>
+  [[nodiscard]] runtime::Result<FlagValue>
   retrieve_value(FlagSpec *spec) const noexcept;
 
 private:
@@ -94,8 +94,7 @@ private:
 
   void register_in_engine(lua_State *const L) final;
 
-  [[nodiscard]] runtime::Result<FlagSpec, std::string>
-  register_flag(lua_State *const L);
+  [[nodiscard]] runtime::Result<FlagSpec> register_flag(lua_State *const L);
 
   friend int l_register_flag(lua_State *const L);
 };

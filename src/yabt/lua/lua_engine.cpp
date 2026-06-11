@@ -48,7 +48,7 @@ void init_modules_global(lua_State *const L) {
 
 } // namespace
 
-[[nodiscard]] yabt::runtime::Result<LuaEngine, std::string>
+[[nodiscard]] yabt::runtime::Result<LuaEngine>
 LuaEngine::construct(const std::filesystem::path &workspace_root) {
   LuaEngine engine;
 
@@ -57,8 +57,7 @@ LuaEngine::construct(const std::filesystem::path &workspace_root) {
 
   engine.m_workspace_root = workspace_root;
   if (engine.m_state == nullptr) {
-    return runtime::Result<LuaEngine, std::string>::error(
-        "Unable to create lua state");
+    return runtime::Result<LuaEngine>::error("Unable to create lua state");
   }
 
   luaL_openlibs(engine.m_state);
@@ -69,7 +68,7 @@ LuaEngine::construct(const std::filesystem::path &workspace_root) {
 
   init_modules_global(engine.m_state);
 
-  return runtime::Result<LuaEngine, std::string>::ok(std::move(engine));
+  return runtime::Result<LuaEngine>::ok(std::move(engine));
 }
 
 void LuaEngine::register_lua_module(LuaModule &module) {
@@ -106,31 +105,30 @@ LuaEngine::~LuaEngine() {
   }
 }
 
-runtime::Result<void, std::string> LuaEngine::exec_string(const char *string) {
+runtime::Result<void> LuaEngine::exec_string(const char *string) {
   const int result = luaL_dostring(m_state, string);
   if (result != 0 /* LUA_OK */) {
     const char *str = luaL_checklstring(m_state, 1, nullptr);
-    return runtime::Result<void, std::string>::error(
+    return runtime::Result<void>::error(
         std::format("failed to run file: {}", str));
   }
 
-  return runtime::Result<void, std::string>::ok();
+  return runtime::Result<void>::ok();
 }
 
-runtime::Result<void, std::string>
-LuaEngine::exec_file(std::string_view file_path) {
+runtime::Result<void> LuaEngine::exec_file(std::string_view file_path) {
   StackGuard g{m_state};
   const int result = luaL_dofile(m_state, std::string{file_path}.c_str());
   if (result != 0 /* LUA_OK */) {
     const char *str = luaL_checklstring(m_state, 1, nullptr);
-    return runtime::Result<void, std::string>::error(
+    return runtime::Result<void>::error(
         std::format("failed to run file: {}", str));
   }
 
-  return runtime::Result<void, std::string>::ok();
+  return runtime::Result<void>::ok();
 }
 
-[[nodiscard]] runtime::Result<void, std::string>
+[[nodiscard]] runtime::Result<void>
 LuaEngine::set_args(std::span<const std::string> args) {
   lua_newtable(m_state);
   for (size_t i = 0; i < args.size(); i++) {
@@ -139,7 +137,7 @@ LuaEngine::set_args(std::span<const std::string> args) {
   }
   lua_setglobal(m_state, "arg");
 
-  return runtime::Result<void, std::string>::ok();
+  return runtime::Result<void>::ok();
 }
 
 void LuaEngine::set_preloaded_lua_packages(
@@ -209,7 +207,7 @@ int LuaEngine::do_yabt_preload() {
   return retvals;
 }
 
-[[nodiscard]] runtime::Result<void, std::string>
+[[nodiscard]] runtime::Result<void>
 LuaEngine::register_yabt_module(const std::string &name,
                                 const std::filesystem::path &path,
                                 std::span<const std::string> target_specs) {
@@ -242,7 +240,7 @@ LuaEngine::register_yabt_module(const std::string &name,
   lua_setfield(m_state, -2, name.c_str());
 
   lua_pop(m_state, 1); // the modules global
-  return runtime::Result<void, std::string>::ok();
+  return runtime::Result<void>::ok();
 }
 
 } // namespace yabt::lua

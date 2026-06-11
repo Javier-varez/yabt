@@ -21,8 +21,7 @@ enum class Color { RED, MAGENTA, YELLOW, GREEN, BLUE };
 
 void set_log_level(LogLevel) noexcept;
 
-[[nodiscard]] runtime::Result<void, std::string>
-set_log_level(std::string_view sv) noexcept;
+[[nodiscard]] runtime::Result<void> set_log_level(std::string_view sv) noexcept;
 
 [[nodiscard]] bool is_level_enabled(LogLevel) noexcept;
 
