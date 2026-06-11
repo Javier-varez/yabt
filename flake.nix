@@ -94,6 +94,7 @@
               # dev tools
               bear
               gdb
+              clang-tools
             ];
           };
 

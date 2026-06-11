@@ -48,6 +48,9 @@ private:
 
 namespace detail {
 
+[[nodiscard]] std::string indent_continuation_lines(std::string message,
+                                                    size_t indentation);
+
 [[nodiscard]] std::string format_log_arg(const runtime::Error &error);
 
 template <typename Arg>
@@ -57,30 +60,38 @@ template <typename Arg>
 }
 
 template <typename Arg>
-using FormatLogArg = std::conditional_t<
-    std::same_as<std::remove_cvref_t<Arg>, runtime::Error>, std::string, Arg>;
+using FormatLogArg =
+    std::conditional_t<std::same_as<std::remove_cvref_t<Arg>, runtime::Error>,
+                       std::string, Arg>;
 
 } // namespace detail
 
 template <typename... Args>
-void log(const std::format_string<
-             const std::string_view &, const std::string_view &,
-             const std::string_view &, std::string_view, size_t,
-             detail::FormatLogArg<Args>...>
-             fstr,
-         const LogLevel level, const std::string_view level_str,
-         const Color color, Args &&...args) noexcept {
+void log(
+    const std::format_string<const std::string_view &, const std::string_view &,
+                             const std::string_view &, std::string_view, size_t,
+                             detail::FormatLogArg<Args>...>
+        fstr,
+    const LogLevel level, const std::string_view level_str, const Color color,
+    Args &&...args) noexcept {
   if (is_level_enabled(level)) {
     using std::string_view_literals::operator""sv;
     const std::string_view set_color = get_set_color_code(color);
     const std::string_view reset_color = get_reset_color_code();
 
+    // Keep this in sync with the _yabt_log macro definition, which has this
+    // constant in the format string
+    constexpr static size_t LOG_LEVEL_WIDTH = 10;
+
     constexpr static size_t INDENT_SPACES = 2;
     const size_t indent_level = current_indent_level();
+    const size_t indentation = LOG_LEVEL_WIDTH + indent_level * INDENT_SPACES;
 
-    puts(std::format(fstr, set_color, level_str, reset_color, ""sv,
-                     indent_level * INDENT_SPACES,
-                     detail::format_log_arg(std::forward<Args>(args))...)
+    std::string message =
+        std::format(fstr, set_color, level_str, reset_color, ""sv,
+                    indent_level * INDENT_SPACES,
+                    detail::format_log_arg(std::forward<Args>(args))...);
+    puts(detail::indent_continuation_lines(std::move(message), indentation)
              .c_str());
   }
 }

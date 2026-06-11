@@ -89,6 +89,20 @@ void disable_color() noexcept { enable_color = false; }
 
 namespace detail {
 
+[[nodiscard]] std::string indent_continuation_lines(std::string message,
+                                                    const size_t indentation) {
+  size_t pos = 0;
+  while ((pos = message.find('\n', pos)) != std::string::npos) {
+    ++pos;
+    if (pos == message.size()) {
+      break;
+    }
+    message.insert(pos, indentation, ' ');
+    pos += indentation;
+  }
+  return message;
+}
+
 [[nodiscard]] std::string format_log_arg(const runtime::Error &error) {
   constexpr static std::string_view DIM_TEXT{"\x1b[2m"};
 
