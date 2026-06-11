@@ -87,6 +87,42 @@ using std::string_view_literals::operator""sv;
 
 void disable_color() noexcept { enable_color = false; }
 
+namespace detail {
+
+[[nodiscard]] std::string format_log_arg(const runtime::Error &error) {
+  constexpr static std::string_view DIM_TEXT{"\x1b[2m"};
+
+  const std::string_view dim_text = enable_color ? DIM_TEXT : ""sv;
+  const std::string_view reset_text = get_reset_color_code();
+
+  std::string result{"Error:\n"};
+  for (auto iter = error.context_chain().rbegin();
+       iter != error.context_chain().rend(); ++iter) {
+    const bool is_first = iter == error.context_chain().rbegin();
+    const bool is_last = std::next(iter) == error.context_chain().rend();
+
+    if (is_first) {
+      result.append("  ×─▶ ");
+    } else if (is_last) {
+      result.append("  ╰─▶ ");
+    } else {
+      result.append("  ├─▶ ");
+    }
+    result.append(iter->message);
+    result.push_back('\n');
+    result.append(is_last ? "      " : "  │   ");
+    result.append(std::format("{}at {}:{}:{}{}", dim_text,
+                              iter->location.file_name(), iter->location.line(),
+                              iter->location.column(), reset_text));
+    if (!is_last) {
+      result.push_back('\n');
+    }
+  }
+  return result;
+}
+
+} // namespace detail
+
 [[nodiscard]] size_t current_indent_level() { return indent_level; }
 
 IndentGuard::IndentGuard() { indent_level++; }

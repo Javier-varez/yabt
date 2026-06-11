@@ -1,8 +1,10 @@
 #include <yabt/runtime/result.h>
 
 #include <gtest/gtest.h>
+#include <source_location>
 #include <utility>
 
+using yabt::runtime::Error;
 using yabt::runtime::Result;
 
 namespace {
@@ -150,6 +152,37 @@ TEST(ResultTest, ConstructionFromInnerTrivial) {
     EXPECT_FALSE(result.is_error());
     EXPECT_EQ(result.ok_value(), 132);
   }
+}
+
+TEST(ResultTest, DefaultErrorLocationPointsToResultErrorCallSite) {
+  const auto location = std::source_location::current();
+  const Result<int> result = Result<int>::error("root failure");
+
+  ASSERT_TRUE(result.is_error());
+  EXPECT_EQ(result.error_value().message(), "root failure");
+  EXPECT_EQ(result.error_value().location().file_name(), location.file_name());
+  EXPECT_EQ(result.error_value().location().line(), location.line() + 1);
+}
+
+TEST(ResultTest, DefaultErrorPreservesExplicitLocation) {
+  const auto location = std::source_location::current();
+  const Result<int> result = Result<int>::error("root failure", location);
+
+  ASSERT_TRUE(result.is_error());
+  EXPECT_EQ(result.error_value().message(), "root failure");
+  EXPECT_EQ(result.error_value().location().file_name(), location.file_name());
+  EXPECT_EQ(result.error_value().location().line(), location.line());
+}
+
+TEST(ResultTest, ExplicitErrorObjectPreservesLocation) {
+  const auto location = std::source_location::current();
+  const Result<int> result =
+      Result<int>::error(Error{"root failure", location});
+
+  ASSERT_TRUE(result.is_error());
+  EXPECT_EQ(result.error_value().message(), "root failure");
+  EXPECT_EQ(result.error_value().location().file_name(), location.file_name());
+  EXPECT_EQ(result.error_value().location().line(), location.line());
 }
 
 TEST(ResultTest, ConstructionFromInnerMovable) {

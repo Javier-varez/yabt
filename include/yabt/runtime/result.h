@@ -6,6 +6,7 @@
 #include <utility>
 
 #include "yabt/runtime/check.h"
+#include "yabt/runtime/error.h"
 
 namespace yabt::runtime {
 
@@ -67,9 +68,7 @@ template <> struct ResultPayload<void, void> {};
 
 } // namespace detail
 
-// NOTE: Probably worth adding a `context` method to Result<T, std::string> to
-// add context to errors.
-template <class Ok, class Err> class [[nodiscard]] Result final {
+template <class Ok, class Err = Error> class [[nodiscard]] Result final {
 public:
   // Constructors used for propagating errors or values
   template <detail::NonVoid T = Ok>
@@ -95,7 +94,19 @@ public:
   }
 
   /// Construct an Err object with perfect forwarding
+  template <class Message>
+    requires std::same_as<Err, Error> &&
+             std::constructible_from<Error, Message &&, std::source_location>
+  [[nodiscard]] static constexpr Result
+  error(Message &&message,
+        std::source_location location = std::source_location::current()) noexcept {
+    return Result{detail::ErrTag{}, std::forward<Message>(message), location};
+  }
+
   template <class... Args>
+    requires(!std::same_as<Err, Error> || sizeof...(Args) != 1 ||
+             !(std::constructible_from<Error, Args &&, std::source_location> &&
+               ...))
   [[nodiscard]] static constexpr Result error(Args &&...args) noexcept {
     if constexpr (std::is_same_v<void, Err>) {
       static_assert(sizeof...(Args) == 0,

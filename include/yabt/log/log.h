@@ -1,6 +1,9 @@
 #pragma once
 
 #include <format>
+#include <string>
+#include <type_traits>
+#include <utility>
 
 #include "yabt/runtime/result.h"
 
@@ -43,10 +46,27 @@ private:
 
 [[nodiscard]] size_t current_indent_level();
 
+namespace detail {
+
+[[nodiscard]] std::string format_log_arg(const runtime::Error &error);
+
+template <typename Arg>
+  requires(!std::same_as<std::remove_cvref_t<Arg>, runtime::Error>)
+[[nodiscard]] constexpr decltype(auto) format_log_arg(Arg &&arg) noexcept {
+  return std::forward<Arg>(arg);
+}
+
+template <typename Arg>
+using FormatLogArg = std::conditional_t<
+    std::same_as<std::remove_cvref_t<Arg>, runtime::Error>, std::string, Arg>;
+
+} // namespace detail
+
 template <typename... Args>
 void log(const std::format_string<
              const std::string_view &, const std::string_view &,
-             const std::string_view &, std::string_view, size_t, Args...>
+             const std::string_view &, std::string_view, size_t,
+             detail::FormatLogArg<Args>...>
              fstr,
          const LogLevel level, const std::string_view level_str,
          const Color color, Args &&...args) noexcept {
@@ -59,7 +79,8 @@ void log(const std::format_string<
     const size_t indent_level = current_indent_level();
 
     puts(std::format(fstr, set_color, level_str, reset_color, ""sv,
-                     indent_level * INDENT_SPACES, std::forward<Args>(args)...)
+                     indent_level * INDENT_SPACES,
+                     detail::format_log_arg(std::forward<Args>(args))...)
              .c_str());
   }
 }
