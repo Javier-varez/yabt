@@ -14,6 +14,7 @@
 #include "yabt/lua/lua_engine.h"
 #include "yabt/lua/path_lib.h"
 #include "yabt/module/module.h"
+#include "yabt/module/module_file.h"
 #include "yabt/runtime/result.h"
 
 namespace yabt::build {
@@ -28,6 +29,10 @@ execute_build(int threads, bool compdb,
               const std::optional<std::filesystem::path> &requested_build_dir,
               const BuildArgs &build_args,
               PostBuildMode mode = PostBuildMode::None);
+
+[[nodiscard]] std::vector<lua::RawFlag>
+merge_yabt_flags(const BuildArgs &build_args,
+                 const module::ModuleFile &module_file);
 
 struct LuaModules final {
   lua::PathLib pathlib;

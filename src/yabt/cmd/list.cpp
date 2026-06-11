@@ -3,6 +3,7 @@
 #include <string>
 #include <string_view>
 
+#include "yabt/build/args.h"
 #include "yabt/build/build.h"
 #include "yabt/cmd/list.h"
 #include "yabt/log/log.h"
@@ -17,7 +18,7 @@ const std::string_view LONG_DESCRIPTION =
     "Lists requested targets that match the specified target spec.";
 
 [[nodiscard]] runtime::Result<void, std::string>
-list_inner(const std::span<const std::string_view> target_patterns) {
+list_inner(const std::span<const std::string_view> arguments) {
   const std::optional<std::filesystem::path> ws_root =
       workspace::get_workspace_root();
   if (!ws_root.has_value()) {
@@ -30,29 +31,32 @@ list_inner(const std::span<const std::string_view> target_patterns) {
   const std::filesystem::path build_dir =
       std::filesystem::absolute(ws_root.value() / workspace::BUILD_DIR_NAME);
 
+  const build::BuildArgs build_args = build::parse_args(arguments);
   auto modules = RESULT_PROPAGATE(workspace::open_workspace(ws_root.value()));
+  const module::ModuleFile mod_file =
+      RESULT_PROPAGATE(workspace::load_root_module_file(ws_root.value()));
+
   auto lua_modules =
       build::construct_lua_modules(ws_root.value(), build_dir, modules);
   auto lua_engine = RESULT_PROPAGATE(
       build::prepare_lua_engine(ws_root.value(), *lua_modules, modules, {}));
   RESULT_PROPAGATE_DISCARD(
       build::invoke_rule_initializers(lua_engine, modules));
+
+  const auto flags = build::merge_yabt_flags(build_args, mod_file);
+  RESULT_PROPAGATE_DISCARD(lua_modules->flaglib.resolve_flag_values(flags));
+
   RESULT_PROPAGATE_DISCARD(build::invoke_build_targets(lua_engine, modules));
 
   // Find all matching targets for a pattern
-  std::vector<std::regex> patterns;
-  for (const std::string_view target_pattern : target_patterns) {
-    patterns.emplace_back(std::string{target_pattern});
-  }
-
   std::vector<std::string> targets{};
-  if (target_patterns.size() == 0) {
+  if (build_args.target_patterns.size() == 0) {
     for (const std::string &target : lua_modules->contextlib.all_targets) {
       targets.push_back(target);
     }
   } else {
     for (const std::string &target : lua_modules->contextlib.all_targets) {
-      for (const std::regex &regex : patterns) {
+      for (const std::regex &regex : build_args.target_patterns) {
         if (std::regex_match(target, regex)) {
           targets.push_back(target);
           break; // don't add a target more than once
