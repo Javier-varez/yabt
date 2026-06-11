@@ -98,8 +98,8 @@ public:
     requires std::same_as<Err, Error> &&
              std::constructible_from<Error, Message &&, std::source_location>
   [[nodiscard]] static constexpr Result
-  error(Message &&message,
-        std::source_location location = std::source_location::current()) noexcept {
+  error(Message &&message, std::source_location location =
+                               std::source_location::current()) noexcept {
     return Result{detail::ErrTag{}, std::forward<Message>(message), location};
   }
 
