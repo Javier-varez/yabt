@@ -19,7 +19,8 @@ template <typename... Args>
 runtime::Result<process::Process::ProcessOutput>
 exec_git_command(Args &&...args) noexcept {
   process::Process git_proc{"git", std::forward<Args>(args)...};
-  RESULT_PROPAGATE_DISCARD(git_proc.start(true));
+  RESULT_PROPAGATE_DISCARD(
+      git_proc.start(true).with_context("while starting git process"));
   return runtime::Result<process::Process::ProcessOutput>::ok(
       git_proc.process_output());
 }
@@ -74,7 +75,8 @@ runtime::Result<std::unique_ptr<Module>> GitModule::open_or_fetch_module(
       std::filesystem::exists(git_dir)) {
     // Return existing module
     yabt_debug("Opening already-existing git module at {}", mod_dir.native());
-    return GitModule::open(mod_dir);
+    return GitModule::open(mod_dir).with_context(
+        std::format("while opening git module at {}", mod_dir.native()));
   }
 
   RESULT_PROPAGATE_DISCARD(validate_git_url(mod_url));
@@ -84,7 +86,8 @@ runtime::Result<std::unique_ptr<Module>> GitModule::open_or_fetch_module(
   if (runtime::Result result = process_output.to_result(); result.is_error()) {
     yabt_error("Error cloning git module {}\nstderr: {}", mod_url,
                process_output.stderr.value_or(""));
-    RESULT_PROPAGATE_DISCARD(result);
+    RESULT_PROPAGATE_DISCARD(std::move(result).with_context(
+        std::format("while cloning git module into {}", mod_dir.native())));
   }
 
   // FIXME checkout right project version
@@ -111,7 +114,8 @@ GitModule::GitModule(const std::filesystem::path &path) noexcept
 [[nodiscard]] runtime::Result<std::string> GitModule::head() const noexcept {
   const ProcessOutput process_output = RESULT_PROPAGATE(exec_git_command(
       "-C", m_path.native(), "rev-list", "--max-count=1", "HEAD"));
-  RESULT_PROPAGATE_DISCARD(process_output.to_result());
+  RESULT_PROPAGATE_DISCARD(process_output.to_result().with_context(
+      std::format("while reading git HEAD in {}", m_path.native())));
   return runtime::Result<std::string>::ok(
       std::string{utils::trim_whitespace(process_output.stdout.value_or(""))});
 }
@@ -119,7 +123,8 @@ GitModule::GitModule(const std::filesystem::path &path) noexcept
 [[nodiscard]] runtime::Result<void> GitModule::fetch() const noexcept {
   const ProcessOutput process_output = RESULT_PROPAGATE(
       exec_git_command("-C", m_path.native(), "fetch", "--all", "--tags"));
-  RESULT_PROPAGATE_DISCARD(process_output.to_result());
+  RESULT_PROPAGATE_DISCARD(process_output.to_result().with_context(
+      std::format("while fetching git refs in {}", m_path.native())));
   return runtime::Result<void>::ok();
 }
 
@@ -153,7 +158,8 @@ GitModule::is_ancestor(std::string_view ancestor,
 GitModule::checkout(std::string_view revision) const noexcept {
   const ProcessOutput process_output = RESULT_PROPAGATE(
       exec_git_command("-C", m_path.native(), "checkout", revision));
-  return process_output.to_result();
+  return process_output.to_result().with_context(std::format(
+      "while checking out revision {} in {}", revision, m_path.native()));
 }
 
 } // namespace yabt::module

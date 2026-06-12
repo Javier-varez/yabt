@@ -36,8 +36,9 @@ runtime::Result<void> add_build_step_impl(ContextLib &lib) {
                     lua_gettop(lib.state)));
   }
 
-  const ninja::BuildStep step =
-      RESULT_PROPAGATE(parse_lua_object<ninja::BuildStep>(lib.state));
+  const ninja::BuildStep step = RESULT_PROPAGATE(
+      parse_lua_object<ninja::BuildStep>(lib.state).with_context(
+          "while registering a build step"));
   if (step.outs.size() == 0) {
     return runtime::Result<void>::error(
         std::format("build step does not contain any outputs"));
@@ -100,8 +101,9 @@ runtime::Result<void> add_build_step_with_rule_impl(ContextLib &lib) {
         lua_gettop(lib.state)));
   }
 
-  const ninja::BuildRule rule =
-      RESULT_PROPAGATE(parse_lua_object<ninja::BuildRule>(lib.state));
+  const ninja::BuildRule rule = RESULT_PROPAGATE(
+      parse_lua_object<ninja::BuildRule>(lib.state).with_context(
+          "while registering a build rule"));
   if (lib.build_rules.find(rule.name) == lib.build_rules.cend()) {
     lib.build_rules.insert(std::pair{rule.name, rule});
     yabt_verbose("Registered build rule: {}", rule.name);
@@ -109,8 +111,9 @@ runtime::Result<void> add_build_step_with_rule_impl(ContextLib &lib) {
 
   lua_pop(lib.state, 1);
 
-  const ninja::BuildStepWithRule step =
-      RESULT_PROPAGATE(parse_lua_object<ninja::BuildStepWithRule>(lib.state));
+  const ninja::BuildStepWithRule step = RESULT_PROPAGATE(
+      parse_lua_object<ninja::BuildStepWithRule>(lib.state).with_context(
+          "while registering a rule-based build step"));
   if (step.outs.size() == 0) {
     return runtime::Result<void>::error(
         "Attempted to register build_steps_with_rule without an out");
@@ -307,7 +310,9 @@ call_fn_impl(lua_State *const L, const std::map<std::string, int> &fn_refs,
         "{}() for target {} must return a table", method_name, target));
   }
 
-  auto result = RESULT_PROPAGATE(parse_lua_object<std::vector<std::string>>(L));
+  auto result = RESULT_PROPAGATE(
+      parse_lua_object<std::vector<std::string>>(L).with_context(std::format(
+          "while parsing {}() result for target {}", method_name, target)));
   lua_pop(L, 1);
 
   if (result.empty()) {

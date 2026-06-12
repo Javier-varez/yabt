@@ -68,7 +68,8 @@ runtime::Result<void> sync_workspace(std::filesystem::path ws_root,
   std::map<std::string, PinnedMod> pinned_modules;
   std::set<std::string> handled_deps;
 
-  auto root_module = RESULT_PROPAGATE(module::open_module(ws_root));
+  auto root_module = RESULT_PROPAGATE(module::open_module(ws_root).with_context(
+      std::format("while opening root module at {}", ws_root.native())));
   yabt_verbose("Found workspace root at {}", ws_root.native());
 
   std::deque<std::filesystem::path> queue{ws_root};
@@ -82,7 +83,10 @@ runtime::Result<void> sync_workspace(std::filesystem::path ws_root,
         current_module_dir / module::MODULE_FILE_NAME;
 
     const module::ModuleFile modfile =
-        RESULT_PROPAGATE(module::ModuleFile::load_module_file(modfile_path));
+        RESULT_PROPAGATE(module::ModuleFile::load_module_file(modfile_path)
+                             .with_context(std::format(
+                                 "while loading module file for sync from {}",
+                                 modfile_path.native())));
 
     if (handled_deps.contains(modfile.name)) {
       continue;
@@ -99,7 +103,9 @@ runtime::Result<void> sync_workspace(std::filesystem::path ws_root,
       RESULT_PROPAGATE_DISCARD(validate_dep_name(dep_name));
       const std::filesystem::path dep_dir = deps_dir / dep_name;
       auto module = RESULT_PROPAGATE(
-          module::open_or_fetch_module(dep_dir, dep.url, dep.type, dep.hash));
+          module::open_or_fetch_module(dep_dir, dep.url, dep.type, dep.hash)
+              .with_context(
+                  std::format("while opening dependency {}", dep_name)));
 
       if ((dep.hash == "") && (sync_mode == SyncMode::STRICT)) {
         return runtime::Result<void>::error(std::format(
@@ -119,11 +125,17 @@ runtime::Result<void> sync_workspace(std::filesystem::path ws_root,
         continue;
       }
 
-      RESULT_PROPAGATE_DISCARD(module->fetch());
+      RESULT_PROPAGATE_DISCARD(module->fetch().with_context(
+          std::format("while fetching dependency {}", dep_name)));
 
       if (dep.hash != "") {
         const auto ancestor_result = module->is_ancestor(dep.hash, dep.version);
         if (ancestor_result.is_error() || !ancestor_result.ok_value()) {
+          if (ancestor_result.is_error()) {
+            return runtime::Result<void>::error(
+                ancestor_result.error_value().with_context(std::format(
+                    "while checking pinned hash for dependency {}", dep_name)));
+          }
           return runtime::Result<void>::error(std::format(
               "Dependency {} has a hash: {} that is not an ancestor "
               "of its version: {}",
@@ -137,12 +149,19 @@ runtime::Result<void> sync_workspace(std::filesystem::path ws_root,
       }
 
       // Checkout the right version of the dependency, if not current
-      if (const std::string head = RESULT_PROPAGATE(module->head());
+      if (const std::string head = RESULT_PROPAGATE(module->head().with_context(
+              std::format("while reading current revision for dependency {}",
+                          dep_name)));
           head != target_revision) {
         yabt_debug("Current head for {} is at {}. Checking out {}", dep_name,
                    head, target_revision);
-        RESULT_PROPAGATE_DISCARD(module->checkout(target_revision));
-        target_revision = RESULT_PROPAGATE(module->head());
+        RESULT_PROPAGATE_DISCARD(
+            module->checkout(target_revision)
+                .with_context(
+                    std::format("while checking out dependency {}", dep_name)));
+        target_revision = RESULT_PROPAGATE(module->head().with_context(
+            std::format("while reading checked-out revision for dependency {}",
+                        dep_name)));
       }
 
       pinned_modules.insert(
@@ -162,7 +181,9 @@ runtime::Result<void> sync_workspace(std::filesystem::path ws_root,
 [[nodiscard]] runtime::Result<module::ModuleFile>
 load_root_module_file(const std::filesystem::path &ws_root) noexcept {
   const std::filesystem::path modfile_path = ws_root / module::MODULE_FILE_NAME;
-  return module::ModuleFile::load_module_file(modfile_path);
+  return module::ModuleFile::load_module_file(modfile_path)
+      .with_context(std::format("while loading root module file from {}",
+                                modfile_path.native()));
 }
 
 runtime::Result<std::vector<std::unique_ptr<module::Module>>>
@@ -184,15 +205,21 @@ open_workspace(const std::filesystem::path &ws_root) noexcept {
     const std::filesystem::path modfile_path =
         current_module_dir / module::MODULE_FILE_NAME;
 
-    const module::ModuleFile modfile =
-        RESULT_PROPAGATE(module::ModuleFile::load_module_file(modfile_path));
+    const module::ModuleFile modfile = RESULT_PROPAGATE(
+        module::ModuleFile::load_module_file(modfile_path)
+            .with_context(
+                std::format("while loading module file for workspace from {}",
+                            modfile_path.native())));
 
     if (handled_deps.contains(modfile.name)) {
       continue;
     }
     handled_deps.insert(modfile.name);
 
-    auto module = RESULT_PROPAGATE(module::open_module(current_module_dir));
+    auto module = RESULT_PROPAGATE(
+        module::open_module(current_module_dir)
+            .with_context(std::format("while opening module at {}",
+                                      current_module_dir.native())));
     all_modules.push_back(std::move(module));
 
     log::IndentGuard _indent_guard2{};
@@ -203,7 +230,9 @@ open_workspace(const std::filesystem::path &ws_root) noexcept {
       const std::filesystem::path dep_dir = deps_dir / dep_name;
 
       if (dep.external) {
-        auto module = RESULT_PROPAGATE(module::open_module(dep_dir));
+        auto module =
+            RESULT_PROPAGATE(module::open_module(dep_dir).with_context(
+                std::format("while opening external dependency {}", dep_name)));
         all_modules.push_back(std::move(module));
 
         yabt_debug("Skipping external dependency {}", dep_name);

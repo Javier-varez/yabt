@@ -313,7 +313,9 @@ runtime::Result<FlagSpec> FlagLib::register_flag(lua_State *const L) {
         "file");
   }
 
-  FlatFlagSpec flat = RESULT_PROPAGATE(parse_lua_object<FlatFlagSpec>(L));
+  FlatFlagSpec flat =
+      RESULT_PROPAGATE(parse_lua_object<FlatFlagSpec>(L).with_context(
+          "while parsing flag registration"));
 
   if (!flat.name.has_value()) {
     return runtime::Result<FlagSpec>::error("Flag does not have a name");
@@ -328,7 +330,8 @@ runtime::Result<FlagSpec> FlagLib::register_flag(lua_State *const L) {
 
   FlagSpec flag{};
 
-  switch (RESULT_PROPAGATE(lua_flag_key_to_type(flat.type))) {
+  switch (RESULT_PROPAGATE(lua_flag_key_to_type(flat.type).with_context(
+      std::format("while registering flag \"{}\"", name)))) {
   case FlagType::ENUM: {
     if (!flat.values.has_value() || flat.values.value().size() == 0) {
       return runtime::Result<FlagSpec>::error(
@@ -414,7 +417,9 @@ FlagLib::resolve_flag_values(const std::span<const RawFlag> flags) noexcept {
 
     const FlagSpec &flag_spec = m_registered_flags[flag.key];
     const FlagValue resolved_flag =
-        RESULT_PROPAGATE(resolve_flag(flag_spec, flag));
+        RESULT_PROPAGATE(resolve_flag(flag_spec, flag)
+                             .with_context(std::format(
+                                 "while resolving flag \"{}\"", flag.key)));
 
     if (m_resolved_flags.contains(flag.key)) {
       return runtime::Result<void>::error(
@@ -433,8 +438,10 @@ FlagLib::resolve_flag_values(const std::span<const RawFlag> flags) noexcept {
     const std::optional<std::string> &default_value =
         std::visit([](const auto &v) { return v.default_value; }, spec);
     if (default_value.has_value()) {
-      const FlagValue resolved_flag = RESULT_PROPAGATE(resolve_flag(
-          spec, RawFlag{.key{name}, .value{default_value.value()}}));
+      const FlagValue resolved_flag = RESULT_PROPAGATE(
+          resolve_flag(spec, RawFlag{.key{name}, .value{default_value.value()}})
+              .with_context(std::format(
+                  "while resolving default value for flag \"{}\"", name)));
       m_resolved_flags[name] = resolved_flag;
       continue;
     }

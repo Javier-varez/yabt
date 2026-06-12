@@ -59,13 +59,17 @@ ModuleFile::load_module_file(const std::filesystem::path path) noexcept {
   const int err = luaL_dofile(L, path.c_str());
   if (err != 0 /* LUA_OK */) {
     const std::string error_msg =
-        RESULT_PROPAGATE(lua::parse_lua_object<std::string>(L));
+        RESULT_PROPAGATE(lua::parse_lua_object<std::string>(L).with_context(
+            std::format("while reading Lua error from {}", path.native())));
     return runtime::Result<ModuleFile>::error(
         std::format("Error loading module file: {}", error_msg));
   }
 
-  const ModuleFile mod = RESULT_PROPAGATE(lua::parse_lua_object<ModuleFile>(L));
-  RESULT_PROPAGATE_DISCARD(validate_module_file(mod));
+  const ModuleFile mod =
+      RESULT_PROPAGATE(lua::parse_lua_object<ModuleFile>(L).with_context(
+          std::format("while parsing module file {}", path.native())));
+  RESULT_PROPAGATE_DISCARD(validate_module_file(mod).with_context(
+      std::format("while validating module file {}", path.native())));
   return runtime::Result<ModuleFile>::ok(mod);
 }
 

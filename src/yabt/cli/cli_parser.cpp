@@ -192,11 +192,15 @@ CliParser::parse(const size_t argc, const char *argv[]) const noexcept {
       // Long flag, strip prefix
       sv = sv.substr(2);
       const std::pair<Flag, Arg> arg =
-          RESULT_PROPAGATE(parse_long_flag(std::span{m_global_flags}, sv));
+          RESULT_PROPAGATE(parse_long_flag(std::span{m_global_flags}, sv)
+                               .with_context("while parsing global options"));
 
       seen_global_flags.push_back(arg.first.name);
       if (arg.first.handler) {
-        RESULT_PROPAGATE_DISCARD(arg.first.handler(arg.second));
+        RESULT_PROPAGATE_DISCARD(
+            arg.first.handler(arg.second)
+                .with_context(std::format("while applying global flag --{}",
+                                          arg.first.name)));
       }
       continue;
     }
@@ -205,11 +209,15 @@ CliParser::parse(const size_t argc, const char *argv[]) const noexcept {
       // short flag
       sv = sv.substr(1);
       std::vector<std::pair<Flag, Arg>> args =
-          RESULT_PROPAGATE(parse_short_flags(std::span{m_global_flags}, sv));
+          RESULT_PROPAGATE(parse_short_flags(std::span{m_global_flags}, sv)
+                               .with_context("while parsing global options"));
       for (std::pair<Flag, Arg> &arg : args) {
         seen_global_flags.push_back(arg.first.name);
         if (arg.first.handler) {
-          RESULT_PROPAGATE_DISCARD(arg.first.handler(arg.second));
+          RESULT_PROPAGATE_DISCARD(
+              arg.first.handler(arg.second)
+                  .with_context(std::format("while applying global flag --{}",
+                                            arg.first.name)));
         }
       }
       continue;
@@ -261,10 +269,17 @@ CliParser::parse(const size_t argc, const char *argv[]) const noexcept {
       // Long flag, strip prefix
       sv = sv.substr(2);
       const std::pair<Flag, Arg> arg =
-          RESULT_PROPAGATE(parse_long_flag(std::span{subcommand_flags}, sv));
+          RESULT_PROPAGATE(parse_long_flag(std::span{subcommand_flags}, sv)
+                               .with_context(std::format(
+                                   "while parsing options for subcommand {}",
+                                   given_subcommand)));
       seen_subcommand_flags.push_back(arg.first.name);
       if (arg.first.handler) {
-        RESULT_PROPAGATE_DISCARD(arg.first.handler(arg.second));
+        RESULT_PROPAGATE_DISCARD(
+            arg.first.handler(arg.second)
+                .with_context(
+                    std::format("while applying flag --{} for subcommand {}",
+                                arg.first.name, given_subcommand)));
       }
       continue;
     }
@@ -272,11 +287,18 @@ CliParser::parse(const size_t argc, const char *argv[]) const noexcept {
     if (sv.starts_with("-")) {
       // short flag
       std::vector<std::pair<Flag, Arg>> args = RESULT_PROPAGATE(
-          parse_short_flags(std::span{subcommand_flags}, sv.substr(1)));
+          parse_short_flags(std::span{subcommand_flags}, sv.substr(1))
+              .with_context(
+                  std::format("while parsing options for subcommand {}",
+                              given_subcommand)));
       for (std::pair<Flag, Arg> &arg : args) {
         seen_subcommand_flags.push_back(arg.first.name);
         if (arg.first.handler) {
-          RESULT_PROPAGATE_DISCARD(arg.first.handler(arg.second));
+          RESULT_PROPAGATE_DISCARD(
+              arg.first.handler(arg.second)
+                  .with_context(
+                      std::format("while applying flag --{} for subcommand {}",
+                                  arg.first.name, given_subcommand)));
         }
       }
       continue;
@@ -302,7 +324,9 @@ CliParser::parse(const size_t argc, const char *argv[]) const noexcept {
     unparsed_args.push_back(std::string_view{argv[arg_idx]});
   }
 
-  return subcommand.invoke(unparsed_args);
+  return subcommand.invoke(unparsed_args)
+      .with_context(
+          std::format("while running subcommand {}", given_subcommand));
   return runtime::Result<void>::ok();
 }
 

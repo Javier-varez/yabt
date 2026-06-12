@@ -46,7 +46,9 @@ runtime::Result<lua::LuaEngine> prepare_lua_engine(
     const std::filesystem::path &ws_root, LuaModules &lua_modules,
     const std::span<const std::unique_ptr<module::Module>> yabt_modules,
     const std::span<const LuaPath> extra_paths) noexcept {
-  lua::LuaEngine engine = RESULT_PROPAGATE(lua::LuaEngine::construct(ws_root));
+  lua::LuaEngine engine = RESULT_PROPAGATE(
+      lua::LuaEngine::construct(ws_root).with_context(std::format(
+          "while preparing Lua engine for workspace {}", ws_root.native())));
   register_modules(engine, lua_modules);
 
   std::vector<std::string> paths;
@@ -92,7 +94,10 @@ runtime::Result<lua::LuaEngine> prepare_lua_engine(
       if (entry.is_regular_file() &&
           entry.path().filename() == INIT_FILE_NAME) {
         yabt_debug("Executing init file: {}", entry.path().native());
-        RESULT_PROPAGATE_DISCARD(engine.exec_file(entry.path().native()));
+        RESULT_PROPAGATE_DISCARD(
+            engine.exec_file(entry.path().native())
+                .with_context(std::format(
+                    "while initializing rules for module {}", mod->name())));
       }
     }
   }
@@ -130,10 +135,13 @@ runtime::Result<lua::LuaEngine> prepare_lua_engine(
 
     // Register modules
     RESULT_PROPAGATE_DISCARD(
-        engine.register_yabt_module(mod->name(), mod_dir, target_specs));
+        engine.register_yabt_module(mod->name(), mod_dir, target_specs)
+            .with_context(std::format(
+                "while registering build files for module {}", mod->name())));
   }
 
-  return engine.exec_string(std::string{embed::get_runtime_file()}.c_str());
+  return engine.exec_string(std::string{embed::get_runtime_file()}.c_str())
+      .with_context("while evaluating Yabt build runtime");
 }
 
 std::vector<lua::RawFlag>
@@ -171,25 +179,35 @@ execute_build(const int threads, const bool compdb,
       std::filesystem::absolute(requested_build_dir.value_or(
           ws_root.value() / workspace::BUILD_DIR_NAME));
 
-  auto modules = RESULT_PROPAGATE(workspace::open_workspace(ws_root.value()));
+  auto modules = RESULT_PROPAGATE(
+      workspace::open_workspace(ws_root.value())
+          .with_context("while opening workspace modules for build"));
 
-  const module::ModuleFile mod_file =
-      RESULT_PROPAGATE(workspace::load_root_module_file(ws_root.value()));
+  const module::ModuleFile mod_file = RESULT_PROPAGATE(
+      workspace::load_root_module_file(ws_root.value())
+          .with_context("while loading root module file for build"));
 
   auto lua_modules = construct_lua_modules(ws_root.value(), build_dir, modules);
   auto lua_engine = RESULT_PROPAGATE(
-      prepare_lua_engine(ws_root.value(), *lua_modules, modules, {}));
-  RESULT_PROPAGATE_DISCARD(invoke_rule_initializers(lua_engine, modules));
+      prepare_lua_engine(ws_root.value(), *lua_modules, modules, {})
+          .with_context("while preparing Lua environment for build"));
+  RESULT_PROPAGATE_DISCARD(
+      invoke_rule_initializers(lua_engine, modules)
+          .with_context("while running rule initializers for build"));
 
   const auto flags = merge_yabt_flags(build_args, mod_file);
-  RESULT_PROPAGATE_DISCARD(lua_modules->flaglib.resolve_flag_values(flags));
+  RESULT_PROPAGATE_DISCARD(
+      lua_modules->flaglib.resolve_flag_values(flags).with_context(
+          "while resolving build flags"));
   for (const auto &[name, value] : lua_modules->flaglib.flag_values()) {
     auto v = std::visit(
         [](const auto value) { return std::format("{}", value); }, value);
     yabt_debug("Flag \"{}\": \"{}\"", name, v);
   }
 
-  RESULT_PROPAGATE_DISCARD(invoke_build_targets(lua_engine, modules));
+  RESULT_PROPAGATE_DISCARD(
+      invoke_build_targets(lua_engine, modules)
+          .with_context("while evaluating build target definitions"));
 
   const std::filesystem::path ninja_file =
       build_dir / workspace::NINJA_FILE_PATH;
@@ -197,7 +215,9 @@ execute_build(const int threads, const bool compdb,
   RESULT_PROPAGATE_DISCARD(
       ninja::save_ninja_file(ninja_file, lua_modules->contextlib.build_rules,
                              lua_modules->contextlib.build_steps,
-                             lua_modules->contextlib.build_steps_with_rule));
+                             lua_modules->contextlib.build_steps_with_rule)
+          .with_context(
+              std::format("while writing Ninja file {}", ninja_file.native())));
 
   if (compdb) {
     std::vector<std::string> compdb_rules;
@@ -209,9 +229,11 @@ execute_build(const int threads, const bool compdb,
     process::Process ninja{"ninja", "-t", "compdb",
                            std::span<const std::string>{compdb_rules}};
     ninja.set_cwd((build_dir).native());
-    RESULT_PROPAGATE_DISCARD(ninja.start(true));
+    RESULT_PROPAGATE_DISCARD(ninja.start(true).with_context(
+        "while starting Ninja to generate compilation database"));
     const process::Process::ProcessOutput output = ninja.process_output();
-    RESULT_PROPAGATE_DISCARD(output.to_result());
+    RESULT_PROPAGATE_DISCARD(output.to_result().with_context(
+        "while generating Ninja compilation database"));
 
     const std::filesystem::path compdb_path =
         build_dir / workspace::COMPDB_NAME;
@@ -244,8 +266,10 @@ execute_build(const int threads, const bool compdb,
   process::Process ninja{"ninja", "-j", threads_str,
                          std::span<const std::string>{targets}};
   ninja.set_cwd((build_dir).native());
-  RESULT_PROPAGATE_DISCARD(ninja.start());
-  RESULT_PROPAGATE_DISCARD(ninja.process_output().to_result());
+  RESULT_PROPAGATE_DISCARD(
+      ninja.start().with_context("while starting Ninja build"));
+  RESULT_PROPAGATE_DISCARD(ninja.process_output().to_result().with_context(
+      "while running Ninja build"));
 
   // If run or test were given, take the time to run/test the corresponding
   // targets.
@@ -255,7 +279,9 @@ execute_build(const int threads, const bool compdb,
       if (mode == PostBuildMode::Run) {
         yabt_verbose("Collecting run arguments for {}", target);
         exec_argv = RESULT_PROPAGATE(
-            lua_modules->contextlib.call_run_fn(target, build_args.exec_args));
+            lua_modules->contextlib.call_run_fn(target, build_args.exec_args)
+                .with_context(std::format("while collecting run command for {}",
+                                          target)));
       } else if (mode == PostBuildMode::Test) {
         // FIXME: This should be handled inside call_run_fn and call_test_fn
         if (!lua_modules->contextlib.test_fn_refs.contains(target)) {
@@ -264,7 +290,9 @@ execute_build(const int threads, const bool compdb,
         }
         yabt_verbose("Collecting test arguments for {}", target);
         exec_argv = RESULT_PROPAGATE(
-            lua_modules->contextlib.call_test_fn(target, build_args.exec_args));
+            lua_modules->contextlib.call_test_fn(target, build_args.exec_args)
+                .with_context(std::format(
+                    "while collecting test command for {}", target)));
       }
 
       std::string arg_string = "";
@@ -276,8 +304,11 @@ execute_build(const int threads, const bool compdb,
 
       process::Process run_process{
           exec_argv[0], std::span<const std::string>{exec_argv}.subspan(1)};
-      RESULT_PROPAGATE_DISCARD(run_process.start());
-      RESULT_PROPAGATE_DISCARD(run_process.process_output().to_result());
+      RESULT_PROPAGATE_DISCARD(run_process.start().with_context(std::format(
+          "while starting {} for target {}", exec_argv[0], target)));
+      RESULT_PROPAGATE_DISCARD(
+          run_process.process_output().to_result().with_context(
+              std::format("while running target {}", target)));
     }
   }
 

@@ -124,8 +124,9 @@ LspCommand::register_command(cli::CliParser &cli_parser) noexcept {
                     module::MODULE_FILE_NAME));
   }
 
-  const auto modules =
-      RESULT_PROPAGATE(workspace::open_workspace(ws_root.value()));
+  const auto modules = RESULT_PROPAGATE(
+      workspace::open_workspace(ws_root.value())
+          .with_context("while opening workspace modules for LSP"));
 
   std::vector<std::filesystem::path> library_paths;
   for (const auto &mod : modules) {
@@ -197,14 +198,15 @@ LspCommand::register_command(cli::CliParser &cli_parser) noexcept {
   }
 
   process::Process proc{m_lsp_binary, std::span<const std::string>{args}};
-  RESULT_PROPAGATE_DISCARD(proc.start());
+  RESULT_PROPAGATE_DISCARD(
+      proc.start().with_context("while starting lua-language-server"));
 
   const auto output = proc.process_output();
 
   // Cleanup
   std::filesystem::remove_all(lua_config_dir);
 
-  return output.to_result();
+  return output.to_result().with_context("while running lua-language-server");
 }
 
 } // namespace yabt::cmd

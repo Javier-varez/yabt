@@ -163,7 +163,8 @@ parse_with_spec(lua_State *const L, LuaArray<T>) {
   runtime::check(lua_checkstack(L, 1), "Exceeded maximum Lua stack size");
   for (size_t i = 1; i <= n; i++) {
     lua_rawgeti(L, -1, i);
-    result.push_back(RESULT_PROPAGATE(parse_lua_object<T>(L)));
+    result.push_back(RESULT_PROPAGATE(parse_lua_object<T>(L).with_context(
+        std::format("while parsing Lua array element {}", i))));
     lua_pop(L, 1);
   }
 
@@ -191,11 +192,13 @@ parse_with_spec(lua_State *const L, LuaKvPairs<T, U>) {
 
   lua_pushnil(L);
   while (lua_next(L, -2)) {
-    const U value = RESULT_PROPAGATE(parse_lua_object<U>(L));
+    const U value = RESULT_PROPAGATE(
+        parse_lua_object<U>(L).with_context("while parsing Lua table value"));
     lua_pop(L, 1);
 
     // keep key for next iter
-    const T key = RESULT_PROPAGATE(parse_lua_object<T>(L));
+    const T key = RESULT_PROPAGATE(
+        parse_lua_object<T>(L).with_context("while parsing Lua table key"));
     result.insert(std::make_pair(key, value));
   }
   return runtime::Result<std::map<T, U>>::ok(result);
@@ -223,7 +226,8 @@ template <typename T, typename... Args>
 
         const runtime::Result<U> inner_res = parse_lua_object<U>(L);
         if (!inner_res.is_ok()) {
-          error = inner_res.error_value();
+          error = inner_res.error_value().with_context(
+              std::format("while parsing Lua field \"{}\"", Name.data));
           lua_pop(L, 1);
           return false;
         }
@@ -307,7 +311,8 @@ parse_with_spec(lua_State *const L, LuaNullable<T>) {
     return runtime::Result<std::optional<T>>::ok(std::nullopt);
   }
 
-  const T inner = RESULT_PROPAGATE(parse_lua_object<T>(L));
+  const T inner = RESULT_PROPAGATE(
+      parse_lua_object<T>(L).with_context("while parsing optional Lua value"));
   return runtime::Result<std::optional<T>>::ok(std::optional{inner});
 }
 

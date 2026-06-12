@@ -25,10 +25,12 @@ get_luarocks_path(const bool cpath) noexcept {
   }
 
   process::Process proc{"luarocks", "path", "--lua-version", "5.1", type};
-  RESULT_PROPAGATE_DISCARD(proc.start(true));
+  RESULT_PROPAGATE_DISCARD(
+      proc.start(true).with_context("while starting luarocks"));
 
   const auto output = proc.process_output();
-  RESULT_PROPAGATE_DISCARD(output.to_result());
+  RESULT_PROPAGATE_DISCARD(
+      output.to_result().with_context("while querying luarocks paths"));
 
   return runtime::Result<std::string>::ok(output.stdout.value_or(""));
 }
@@ -57,16 +59,21 @@ RulesTestCommand::register_command(cli::CliParser &cli_parser) noexcept {
   const std::filesystem::path build_dir =
       std::filesystem::absolute(ws_root.value() / workspace::BUILD_DIR_NAME);
 
-  const auto modules =
-      RESULT_PROPAGATE(workspace::open_workspace(ws_root.value()));
+  const auto modules = RESULT_PROPAGATE(
+      workspace::open_workspace(ws_root.value())
+          .with_context("while opening workspace modules for rules tests"));
   auto lua_modules =
       build::construct_lua_modules(ws_root.value(), build_dir, modules);
   auto lua_engine = RESULT_PROPAGATE(
-      prepare_lua_engine(ws_root.value(), *lua_modules, modules,
-                         std::array{build::LuaPath{
-                             .path{RESULT_PROPAGATE(get_luarocks_path(false))},
-                             .cpath{RESULT_PROPAGATE(get_luarocks_path(true))},
-                         }}));
+      prepare_lua_engine(
+          ws_root.value(), *lua_modules, modules,
+          std::array{build::LuaPath{
+              .path{RESULT_PROPAGATE(get_luarocks_path(false).with_context(
+                  "while preparing Lua path for rules tests"))},
+              .cpath{RESULT_PROPAGATE(get_luarocks_path(true).with_context(
+                  "while preparing Lua C path for rules tests"))},
+          }})
+          .with_context("while preparing Lua environment for rules tests"));
 
   std::vector<std::string> spec_dirs{};
   for (const auto &mod : modules) {
@@ -82,7 +89,8 @@ RulesTestCommand::register_command(cli::CliParser &cli_parser) noexcept {
   using std::string_literals::operator""s;
   RESULT_PROPAGATE_DISCARD(lua_engine.set_args(spec_dirs));
   RESULT_PROPAGATE_DISCARD(
-      lua_engine.exec_string("require 'busted.runner' { standalone = false }"));
+      lua_engine.exec_string("require 'busted.runner' { standalone = false }")
+          .with_context("while running Busted rule tests"));
 
   return runtime::Result<void>::ok();
 }
