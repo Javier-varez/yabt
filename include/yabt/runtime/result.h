@@ -186,6 +186,37 @@ public:
     return Result<Ok, MappedErr>::error(callable(error_value()));
   }
 
+  [[nodiscard]] constexpr Result with_context(
+      std::string_view context,
+      std::source_location location = std::source_location::current()) const &
+    requires std::same_as<Err, Error>
+  {
+    if (is_ok()) {
+      if constexpr (std::same_as<Ok, void>) {
+        return Result::ok();
+      } else {
+        return Result::ok(ok_value());
+      }
+    }
+    return Result::error(error_value().with_context(context, location));
+  }
+
+  [[nodiscard]] constexpr Result with_context(
+      std::string_view context,
+      std::source_location location = std::source_location::current()) &&
+    requires std::same_as<Err, Error>
+  {
+    if (is_ok()) {
+      if constexpr (std::same_as<Ok, void>) {
+        return Result::ok();
+      } else {
+        return Result::ok(std::move(*this).ok_value());
+      }
+    }
+    return Result::error(
+        std::move(*this).error_value().with_context(context, location));
+  }
+
   constexpr ~Result() noexcept { release(); }
 
   constexpr Result(const Result &other) noexcept {

@@ -1,11 +1,18 @@
-#include <yabt/runtime/result.h>
+#include "yabt/runtime/result.h"
 
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <source_location>
 #include <utility>
 
 using yabt::runtime::Error;
 using yabt::runtime::Result;
+
+using ::testing::AllOf;
+using ::testing::ElementsAre;
+using ::testing::Eq;
+using ::testing::Field;
+using ::testing::ResultOf;
 
 namespace {
 
@@ -39,6 +46,18 @@ public:
 private:
   int *m_dtor_count;
 };
+
+auto ErrorEntryIs(std::string_view message, std::source_location location) {
+  return AllOf(
+      Field("message", &Error::Entry::message, Eq(std::string{message})),
+      Field("location", &Error::Entry::location,
+            ResultOf(
+                "line",
+                [](const std::source_location &actual_location) {
+                  return actual_location.line();
+                },
+                Eq(location.line()))));
+}
 
 consteval bool constexpr_construction_and_access() {
   Result<int, int> ok = Result<int, int>::ok(21);
@@ -183,6 +202,49 @@ TEST(ResultTest, ExplicitErrorObjectPreservesLocation) {
   EXPECT_EQ(result.error_value().message(), "root failure");
   EXPECT_EQ(result.error_value().location().file_name(), location.file_name());
   EXPECT_EQ(result.error_value().location().line(), location.line());
+}
+
+TEST(ResultTest, WithContextAddsContextToDefaultError) {
+  const auto root_location = std::source_location::current();
+  const Result<int> original =
+      Result<int>::error("root failure", root_location);
+  const auto context_location = std::source_location::current();
+  const Result<int> result =
+      original.with_context("while loading workspace", context_location);
+
+  ASSERT_TRUE(result.is_error());
+  EXPECT_THAT(original.error_value().context_chain(),
+              ElementsAre(ErrorEntryIs("root failure", root_location)));
+  EXPECT_THAT(
+      result.error_value().context_chain(),
+      ElementsAre(ErrorEntryIs("root failure", root_location),
+                  ErrorEntryIs("while loading workspace", context_location)));
+}
+
+TEST(ResultTest, WithContextPreservesOkResult) {
+  const Result<int> copied = Result<int>::ok(42).with_context("unused context");
+  Result<MoveableOnly> moveable = Result<MoveableOnly>::ok(17);
+  Result<MoveableOnly> moved =
+      std::move(moveable).with_context("unused context");
+
+  ASSERT_TRUE(copied.is_ok());
+  EXPECT_EQ(copied.ok_value(), 42);
+  ASSERT_TRUE(moved.is_ok());
+  EXPECT_EQ(moved.ok_value().val(), 17);
+}
+
+TEST(ResultTest, WithContextMovesErrorResult) {
+  const auto root_location = std::source_location::current();
+  const auto context_location = std::source_location::current();
+  const Result<int> result =
+      Result<int>::error("root failure", root_location)
+          .with_context("while syncing modules", context_location);
+
+  ASSERT_TRUE(result.is_error());
+  EXPECT_THAT(
+      result.error_value().context_chain(),
+      ElementsAre(ErrorEntryIs("root failure", root_location),
+                  ErrorEntryIs("while syncing modules", context_location)));
 }
 
 TEST(ResultTest, ConstructionFromInnerMovable) {
