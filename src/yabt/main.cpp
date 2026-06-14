@@ -108,7 +108,6 @@ int main(int argc, const char *argv[]) noexcept {
   yabt::runtime::Result cli_result = cli_parser.parse(argc, argv);
   if (!cli_result.is_ok()) {
     yabt_error("{}\n", cli_result.error_value());
-    cli_parser.print_help();
     return EXIT_FAILURE;
   }
 

@@ -27,9 +27,21 @@
           pkgs = import nixpkgs {
             inherit system;
           };
+          luaEnv = pkgs.luajit.withPackages (ps: with ps; [
+            luarocks
+            busted
+          ]);
+          luarocksConfig = pkgs.writeText "luarocks-config.lua" ''
+            rocks_trees = {
+              { name = "nix", root = "${luaEnv}" },
+              { name = "luarocks", root = "${pkgs.luajitPackages.luarocks}" },
+            }
+          '';
           yabt-pkg = { toolchain ? "gcc" }: pkgs.stdenv.mkDerivation rec {
             pname = "yabt";
             version = "0.0.1";
+
+            LUAROCKS_CONFIG = luarocksConfig;
 
             src = pkgs.runCommand "make-src" {
               nativeBuildInputs = [ pkgs.git ];
@@ -49,7 +61,7 @@
             nativeBuildInputs = with pkgs; [
               ninja
               git
-              (luajit.withPackages (ps: with ps; [ busted ]))
+              luaEnv
             ];
 
             buildPhase = ''
@@ -76,15 +88,27 @@
           pkgs = import nixpkgs {
             inherit system;
           };
+          luaEnv = pkgs.luajit.withPackages (ps: with ps; [
+            luarocks
+            busted
+          ]);
+          luarocksConfig = pkgs.writeText "luarocks-config.lua" ''
+            rocks_trees = {
+              { name = "nix", root = "${luaEnv}" },
+              { name = "luarocks", root = "${pkgs.luajitPackages.luarocks}" },
+            }
+          '';
         in
         rec {
           yabt = pkgs.mkShell {
+            LUAROCKS_CONFIG = luarocksConfig;
+
             nativeBuildInputs = with pkgs; [
               # build deps (busted is needed for testing)
               clang
               llvm
               gcc
-              (luajit.withPackages (ps: with ps; [ busted ]))
+              luaEnv
               pkg-config
 
               # Runtime deps
